@@ -50,7 +50,7 @@ index 5b22f55..2b36a42 100644
  -include GNUmakefile.preamble
  include $(GNUSTEP_MAKEFILES)/test-tool.make
 diff --git a/Tests/Unit/SOGoTestRunner.m b/Tests/Unit/SOGoTestRunner.m
-index 2dcaebd..6195308 100644
+index 2dcaebd..5d3c49a 100644
 --- a/Tests/Unit/SOGoTestRunner.m
 +++ b/Tests/Unit/SOGoTestRunner.m
 @@ -31,6 +31,8 @@
@@ -67,7 +67,7 @@ index 2dcaebd..6195308 100644
    [self autorelease];
  
 -  return rc;
-+  return (failuresCount != EXPECTED_FAILURES) || (errorsCount != 0);
++  return (failuresCount + errorsCount != EXPECTED_FAILURES);
  }
  
  - (void) incrementTestCounter: (SOGoTestFailureCode) failureCode
