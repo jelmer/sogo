@@ -1,4 +1,4 @@
-Scripts/sogo-default etc/default/
+etc/default/sogo
 Apache/SOGo.conf etc/apache2/conf.d/
 usr/sbin/*
 usr/lib/GNUstep/*
