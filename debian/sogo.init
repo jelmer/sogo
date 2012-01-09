@@ -42,11 +42,11 @@ PREFORK=1
 PIDFILE=/var/run/$NAME/$NAME.pid
 LOGFILE=/var/log/$NAME/$NAME.log
 
-DAEMON_OPTS="-WOWorkersCount $PREFORK -WOPidFile $PIDFILE -WOLogFile $LOGFILE"
-
 if [ -f /etc/default/$NAME ]; then
     . /etc/default/$NAME
 fi
+
+DAEMON_OPTS="-WOWorkersCount $PREFORK -WOPidFile $PIDFILE -WOLogFile $LOGFILE"
 
 . /lib/lsb/init-functions
 
