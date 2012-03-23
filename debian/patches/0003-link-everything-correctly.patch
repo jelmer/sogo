@@ -67,10 +67,10 @@ index e178ea5..6fc0b52 100644
  NGCards_LIBRARIES_DEPEND_UPON += \
  	-framework NGExtensions	-framework EOControl \
 diff --git a/SoObjects/SOGo/GNUmakefile.preamble b/SoObjects/SOGo/GNUmakefile.preamble
-index ee71f35..55dd2be 100644
+index b65dfd3..9334ba4 100644
 --- a/SoObjects/SOGo/GNUmakefile.preamble
 +++ b/SoObjects/SOGo/GNUmakefile.preamble
-@@ -21,9 +21,9 @@ SOGo_LIBRARIES_DEPEND_UPON += \
+@@ -22,9 +22,9 @@ SOGo_LIBRARIES_DEPEND_UPON += \
  	-lNGCards		\
  	-lNGMime		\
  	-lNGStreams -lNGExtensions -lEOControl \
