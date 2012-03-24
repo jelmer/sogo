@@ -50,14 +50,14 @@ index 5b22f55..2b36a42 100644
  -include GNUmakefile.preamble
  include $(GNUSTEP_MAKEFILES)/test-tool.make
 diff --git a/Tests/Unit/SOGoTestRunner.m b/Tests/Unit/SOGoTestRunner.m
-index 2dcaebd..5d3c49a 100644
+index 2dcaebd..9e4bb37 100644
 --- a/Tests/Unit/SOGoTestRunner.m
 +++ b/Tests/Unit/SOGoTestRunner.m
 @@ -31,6 +31,8 @@
  
  #import "SOGoTestRunner.h"
  
-+#define EXPECTED_FAILURES 3
++#define EXPECTED_FAILURES 4
 +
  @implementation SOGoTestRunner
  
