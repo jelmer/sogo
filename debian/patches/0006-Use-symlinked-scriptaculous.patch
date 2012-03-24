@@ -1,0 +1,21 @@
+From: Jeroen Dekkers <jeroen@dekkers.ch>
+Date: Sat, 24 Mar 2012 23:59:49 +0100
+Subject: Use symlinked scriptaculous
+
+---
+ UI/Templates/UIxPageFrame.wox |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/UI/Templates/UIxPageFrame.wox b/UI/Templates/UIxPageFrame.wox
+index 3176d3e..eab0353 100644
+--- a/UI/Templates/UIxPageFrame.wox
++++ b/UI/Templates/UIxPageFrame.wox
+@@ -163,7 +163,7 @@
+ 	  <script type="text/javascript" rsrc:src="generic.js"><!-- space --></script>
+ 	  <script type="text/javascript" rsrc:src="SOGoDragHandles.js"><!-- space --></script>
+ 	  <script type="text/javascript" rsrc:src="SOGoTabsController.js"><!-- space --></script>
+-	  <script type="text/javascript" rsrc:src="scriptaculous.js"><!-- space --></script>
++	  <script type="text/javascript" rsrc:src="scriptaculous/scriptaculous.js"><!-- space --></script>
+ 	  <var:if condition="hasProductSpecificJavaScript"><script type="text/javascript"
+ 	      var:src="productJavaScriptURL"><!-- space --></script></var:if>
+ 	  <var:if condition="hasPageSpecificJavaScript"><script type="text/javascript"

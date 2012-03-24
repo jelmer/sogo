@@ -3,3 +3,4 @@
 0003-link-everything-correctly.patch
 0004-Read-configuration-from-etc.patch
 0005-Add-support-for-GnuTLS.patch
+0006-Use-symlinked-scriptaculous.patch

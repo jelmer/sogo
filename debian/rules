@@ -18,13 +18,13 @@ override_dh_auto_install:
 	cp Scripts/sogo-default debian/tmp/etc/default/sogo
 # Remove javascript libraries already packaged by Debian.
 # Revert temporary, doesn't work
-#	rm -r debian/tmp/usr/lib/GNUstep/SOGo/WebServerResources/ckeditor
-#	dh_link -psogo-common usr/share/javascript/ckeditor usr/share/GNUstep/SOGo/WebServerResources/ckeditor
-#	rm debian/tmp/usr/lib/GNUstep/SOGo/WebServerResources/scriptaculous.js
-#	rm -r debian/tmp/usr/lib/GNUstep/SOGo/WebServerResources/scriptaculous
-#	dh_link -psogo-common usr/share/javascript/scriptaculous usr/share/GNUstep/SOGo/WebServerResources/scriptaculous
-#	rm debian/tmp/usr/lib/GNUstep/SOGo/WebServerResources/prototype.js
-#	dh_link -psogo-common usr/share/javascript/prototype/prototype.js usr/share/GNUstep/SOGo/WebServerResources/prototype.js
+	rm -r debian/tmp/usr/lib/GNUstep/SOGo/WebServerResources/ckeditor
+	dh_link -psogo-common usr/share/javascript/ckeditor usr/share/GNUstep/SOGo/WebServerResources/ckeditor
+	rm debian/tmp/usr/lib/GNUstep/SOGo/WebServerResources/scriptaculous.js
+	rm -r debian/tmp/usr/lib/GNUstep/SOGo/WebServerResources/scriptaculous
+	dh_link -psogo-common usr/share/javascript/scriptaculous usr/share/GNUstep/SOGo/WebServerResources/scriptaculous
+	rm debian/tmp/usr/lib/GNUstep/SOGo/WebServerResources/prototype.js
+	dh_link -psogo-common usr/share/javascript/prototype/prototype.js usr/share/GNUstep/SOGo/WebServerResources/prototype.js
 # Put arch independent files in /usr/share instead of /usr/lib
 	mkdir -p debian/tmp/usr/share/GNUstep/SOGo
 	for i in AdministrationUI.SOGo Appointments.SOGo CommonUI.SOGo Contacts.SOGo ContactsUI.SOGo MailPartViewers.SOGo \
