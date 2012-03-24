@@ -4,4 +4,4 @@ usr/sbin/*
 usr/lib/GNUstep/*
 usr/lib/lib*
 usr/include/GNUstep/*
-debian/db.conf.template usr/share/sogo/
+debian/debconf.conf.template usr/share/sogo/

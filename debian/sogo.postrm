@@ -20,7 +20,7 @@ case "$1" in
         rm -rf /var/spool/sogo
         rm -rf /var/log/sogo
         rm -rf /var/run/sogo
-        rm -f /etc/sogo/db.conf
+        rm -f /etc/sogo/debconf.conf
         ;;
 
     remove|upgrade|failed-upgrade|abort-install|abort-upgrade|disappear)

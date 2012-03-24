@@ -7,7 +7,7 @@ Subject: Read configuration from /etc
  1 files changed, 50 insertions(+), 11 deletions(-)
 
 diff --git a/SoObjects/SOGo/SOGoSystemDefaults.m b/SoObjects/SOGo/SOGoSystemDefaults.m
-index f617d6d..dba2896 100644
+index f617d6d..cb656ea 100644
 --- a/SoObjects/SOGo/SOGoSystemDefaults.m
 +++ b/SoObjects/SOGo/SOGoSystemDefaults.m
 @@ -1,6 +1,7 @@
@@ -48,7 +48,7 @@ index f617d6d..dba2896 100644
 +	    {
 +	      NSMutableDictionary *dbconfig;
 +
-+	      dbconfig = [[NSMutableDictionary alloc] initWithContentsOfFile: @"/etc/sogo/db.conf"];
++	      dbconfig = [[NSMutableDictionary alloc] initWithContentsOfFile: @"/etc/sogo/debconf.conf"];
 +	      if (dbconfig)
 +		{
 +		  [domain addEntriesFromDictionary: dbconfig];
@@ -56,7 +56,7 @@ index f617d6d..dba2896 100644
 +		}
 +	      else
 +		{
-+		  [logger warnWithFormat: @"Can't deserialize /etc/sogo/db.conf, exiting."];
++		  [logger warnWithFormat: @"Can't deserialize /etc/sogo/debconf.conf, exiting."];
 +		  exit(1);
 +		}
 +	    }
