@@ -2,3 +2,4 @@
 0002-make-check.patch
 0003-link-everything-correctly.patch
 0004-Read-configuration-from-etc.patch
+0005-Add-support-for-GnuTLS.patch

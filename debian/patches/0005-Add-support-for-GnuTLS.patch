@@ -1,0 +1,323 @@
+From: Jeroen Dekkers <jeroen@dekkers.ch>
+Date: Sat, 24 Mar 2012 15:39:02 +0100
+Subject: Add support for GnuTLS
+
+---
+ SoObjects/SOGo/GNUmakefile.preamble          |   10 ++++-
+ SoObjects/SOGo/NSString+Utilities.m          |   16 ++++++
+ Tests/Unit/GNUmakefile                       |    1 +
+ Tests/Unit/TestNSString+MD5SHA1.m            |   64 ++++++++++++++++++++++++++
+ UI/MailPartViewers/GNUmakefile.preamble      |    4 ++
+ UI/MailPartViewers/UIxMailPartSignedViewer.m |   14 ++++++
+ configure                                    |   36 +++++++++++----
+ maintenance/dummytool.c                      |    7 +++
+ 8 files changed, 142 insertions(+), 10 deletions(-)
+ create mode 100644 Tests/Unit/TestNSString+MD5SHA1.m
+ create mode 100644 UI/MailPartViewers/GNUmakefile.preamble
+ create mode 100644 maintenance/dummytool.c
+
+diff --git a/SoObjects/SOGo/GNUmakefile.preamble b/SoObjects/SOGo/GNUmakefile.preamble
+index 9334ba4..da6986f 100644
+--- a/SoObjects/SOGo/GNUmakefile.preamble
++++ b/SoObjects/SOGo/GNUmakefile.preamble
+@@ -24,7 +24,15 @@ SOGo_LIBRARIES_DEPEND_UPON += \
+ 	-lNGStreams -lNGExtensions -lEOControl \
+ 	-lDOM -lSaxObjC \
+ 	-lNGLdap -lSBJson \
+-        -lGDLContentStore -lcrypto -lgnustep-base -lobjc -ldl
++        -lGDLContentStore -lgnustep-base -lobjc -ldl
++
++ifeq ($(HAS_LIBRARY_gnutls),yes)
++ADDITIONAL_CPPFLAGS += -DHAVE_GNUTLS=1
++SOGo_LIBRARIES_DEPEND_UPON += -lgnutls
++else
++ADDITIONAL_CPPFLAGS += -DHAVE_OPENSSL=1
++SOGo_LIBRARIES_DEPEND_UPON += -lcrypto
++endif
+ 
+ ifeq ($(findstring openbsd, $(GNUSTEP_HOST_OS)), openbsd)
+ SOGo_LIBRARIES_DEPEND_UPON += -lcrypto
+diff --git a/SoObjects/SOGo/NSString+Utilities.m b/SoObjects/SOGo/NSString+Utilities.m
+index 0d01f99..d24e159 100644
+--- a/SoObjects/SOGo/NSString+Utilities.m
++++ b/SoObjects/SOGo/NSString+Utilities.m
+@@ -1,6 +1,7 @@
+ /* NSString+Utilities.m - this file is part of SOGo
+  *
+  * Copyright (C) 2006-2011 Inverse inc.
++ * Copyright (C) 2012 Jeroen Dekkers <jeroen@dekkers.ch>
+  *
+  * Author: Wolfgang Sourdeau <wsourdeau@inverse.ca>
+  *         Ludovic Marcotte <lmarcotte@inverse.ca>
+@@ -46,9 +47,16 @@
+ 
+ #define _XOPEN_SOURCE 1
+ #include <unistd.h>
++#ifdef HAVE_GNUTLS
++#include <gnutls/gnutls.h>
++#include <gnutls/crypto.h>
++#define MD5_DIGEST_LENGTH 16
++#define SHA_DIGEST_LENGTH 20
++#else
+ #include <openssl/evp.h>
+ #include <openssl/md5.h>
+ #include <openssl/sha.h>
++#endif
+ 
+ static NSMutableCharacterSet *urlNonEndingChars = nil;
+ static NSMutableCharacterSet *urlAfterEndingChars = nil;
+@@ -541,7 +549,11 @@ static int cssEscapingCount;
+   memset(md, 0, MD5_DIGEST_LENGTH);
+   memset(buf, 0, 80);
+   
++#ifdef HAVE_GNUTLS
++  gnutls_hash_fast (GNUTLS_DIG_MD5, (const void *)[self UTF8String], strlen([self UTF8String]), md);
++#else
+   EVP_Digest((const void *) [self UTF8String], strlen([self UTF8String]), md, NULL, EVP_md5(), NULL);
++#endif
+   for (i = 0; i < MD5_DIGEST_LENGTH; i++)
+     sprintf(&(buf[i*2]), "%02x", md[i]);
+   
+@@ -557,7 +569,11 @@ static int cssEscapingCount;
+   memset(sha, 0, SHA_DIGEST_LENGTH);
+   memset(buf, 0, 80);
+   
++#ifdef HAVE_GNUTLS
++  gnutls_hash_fast (GNUTLS_DIG_SHA1, (const void *)[self UTF8String], strlen([self UTF8String]), sha);
++#else
+   SHA1((const void *)[self UTF8String], strlen([self UTF8String]), sha);
++#endif
+   for (i = 0; i < SHA_DIGEST_LENGTH; i++)
+     sprintf(&(buf[i*2]), "%02x", sha[i]);
+   
+diff --git a/Tests/Unit/GNUmakefile b/Tests/Unit/GNUmakefile
+index 2b36a42..8f4980c 100644
+--- a/Tests/Unit/GNUmakefile
++++ b/Tests/Unit/GNUmakefile
+@@ -22,6 +22,7 @@ $(TEST_TOOL)_OBJC_FILES += \
+ 	TestSBJsonParser.m \
+ 	\
+ 	TestNGMimeAddressHeaderFieldGenerator.m \
++	TestNSString+MD5SHA1.m \
+ 	TestNSString+URLEscaping.m \
+ 	TestNSString+Utilities.m
+ 
+diff --git a/Tests/Unit/TestNSString+MD5SHA1.m b/Tests/Unit/TestNSString+MD5SHA1.m
+new file mode 100644
+index 0000000..bfc186e
+--- /dev/null
++++ b/Tests/Unit/TestNSString+MD5SHA1.m
+@@ -0,0 +1,64 @@
++/* TestNSString+MD5SHA1.m - this file is part of SOGo
++ *
++ * Copyright (C) 2011 Jeroen Dekkers
++ *
++ * Author: Jeroen Dekkers <jeroen@dekkers.ch>
++ *
++ * This file is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation; either version 2, or (at your option)
++ * any later version.
++ *
++ * This file is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program; see the file COPYING.  If not, write to
++ * the Free Software Foundation, Inc., 59 Temple Place - Suite 330,
++ * Boston, MA 02111-1307, USA.
++ */
++
++#import <Foundation/NSString.h>
++#import "SOGo/NSString+Utilities.h"
++
++#import "SOGoTest.h"
++
++@interface TestNSString_plus_MD5SHA1 : SOGoTest
++@end
++
++@implementation TestNSString_plus_MD5SHA1
++
++- (void) test_stringMD5SHA1
++{
++  const char *inStrings[] = { "SOGoSOGoSOGoSOGo", "éléphant", "2š", NULL };
++  const char **inString;
++  NSString *MD5Strings[] = { @"d3e8072c49511f099d254cc740c7e12a", @"bc6a1535589d6c3cf7999ac37018c11e", @"886ae9b58817fb8a63902feefcd18812" };
++  NSString *SHA1Strings[] = { @"b7d891e0f3b42898fa66627b5cfa3d80501bae46", @"99a02f8802f8ea7e3ad91c4cc4d3ef5a7257c88f", @"32b89f3a9e6078db554cdd39f8571c09de7e8b21" };
++  NSString **MD5String;
++  NSString **SHA1String;
++  NSString *result, *error;
++
++  inString = inStrings;
++  MD5String = MD5Strings;
++  SHA1String = SHA1Strings;
++  while (*inString)
++    {
++      result = [[NSString stringWithUTF8String: *inString] asMD5String];
++      error = [NSString stringWithFormat:
++                          @"string '%s' wrong MD5: '%@' (expected '%@')",
++                        *inString, result, *MD5String];
++      testWithMessage([result isEqualToString: *MD5String], error);
++      result = [[NSString stringWithUTF8String: *inString] asSHA1String];
++      error = [NSString stringWithFormat:
++                          @"string '%s' wrong SHA1: '%@' (expected '%@')",
++                        *inString, result, *SHA1String];
++      testWithMessage([result isEqualToString: *SHA1String], error);
++      inString++;
++      MD5String++;
++      SHA1String++;
++    }
++}
++
++@end
+diff --git a/UI/MailPartViewers/GNUmakefile.preamble b/UI/MailPartViewers/GNUmakefile.preamble
+new file mode 100644
+index 0000000..545cdf4
+--- /dev/null
++++ b/UI/MailPartViewers/GNUmakefile.preamble
+@@ -0,0 +1,4 @@
++ifeq ($(HAS_LIBRARY_ssl),yes)
++ADDITIONAL_CPPFLAGS += -DHAVE_OPENSSL=1
++BUNDLE_LIBS += -lcrypto
++endif
+diff --git a/UI/MailPartViewers/UIxMailPartSignedViewer.m b/UI/MailPartViewers/UIxMailPartSignedViewer.m
+index 77aad8b..f1278c7 100644
+--- a/UI/MailPartViewers/UIxMailPartSignedViewer.m
++++ b/UI/MailPartViewers/UIxMailPartSignedViewer.m
+@@ -22,10 +22,12 @@
+  */
+ 
+ #include <stdio.h>
++#ifdef HAVE_OPENSSL
+ #include <openssl/bio.h>
+ #include <openssl/err.h>
+ #include <openssl/pkcs7.h>
+ #include <openssl/x509.h>
++#endif
+ 
+ #import <Foundation/NSArray.h>
+ #import <NGMime/NGPart.h>
+@@ -35,6 +37,7 @@
+ 
+ @implementation UIxMailPartSignedViewer : UIxMailPartMixedViewer
+ 
++#ifdef HAVE_OPENSSL
+ - (X509_STORE *) _setupVerify
+ {
+   X509_STORE *store;
+@@ -185,5 +188,16 @@
+ 
+   return validationMessage;
+ }
++#else
++- (BOOL) validSignature
++{
++  return NO;
++}
++
++- (NSString *) validationMessage
++{
++  return @"Signature verification not implemented when using GnuTLS";
++}
++#endif
+ 
+ @end
+diff --git a/configure b/configure
+index d2b2317..ad3bff7 100755
+--- a/configure
++++ b/configure
+@@ -303,27 +303,39 @@ genConfigMake() {
+ }
+ 
+ checkLinking() {
++  # library-name => $1, type => $2
+   local oldpwd=$PWD
+   local tmpdir=".configure-test-$$"
+   
+   mkdir $tmpdir
+   cd $tmpdir
+-  cp ../maintenance/dummytool.m .
++  cp ../maintenance/dummytool.c .
+   
++  OLDLIBS=$LIBS
++  for LIB in $1;do
++    LIBS="$LIBS -l${LIB}"
++  done
++
+   tmpmake="GNUmakefile"
+-  echo  >$tmpmake "include ../config.make"
++  echo  >$tmpmake "-include ../config.make"
+   echo >>$tmpmake "include \$(GNUSTEP_MAKEFILES)/common.make"
+-  echo >>$tmpmake "TOOL_NAME           := linktest"
+-  echo >>$tmpmake "linktest_OBJC_FILES := dummytool.m"
+-  echo >>$tmpmake "linktest_TOOL_LIBS  += -l$1"
++  echo >>$tmpmake "CTOOL_NAME           := linktest"
++  echo >>$tmpmake "linktest_C_FILES := dummytool.c"
++  echo >>$tmpmake "ifeq (\$(findstring openbsd, \$(GNUSTEP_HOST_OS)), openbsd)"
++  echo >>$tmpmake "linktest_TOOL_LIBS  += $LIBS -liconv"
++  echo >>$tmpmake "else"
++  echo >>$tmpmake "linktest_TOOL_LIBS  += $LIBS"
++  echo >>$tmpmake "endif"
++  echo >>$tmpmake "SYSTEM_LIB_DIR += \$(CONFIGURE_SYSTEM_LIB_DIR)"
+   echo >>$tmpmake "SYSTEM_LIB_DIR      += ${LINK_SYSLIBDIRS}"
+-  echo >>$tmpmake "include \$(GNUSTEP_MAKEFILES)/tool.make"
++  echo >>$tmpmake "include \$(GNUSTEP_MAKEFILES)/ctool.make"
+   
+   $MAKE -s messages=yes -f $tmpmake linktest >out.log 2>err.log
+   LINK_RESULT=$?
+ 
+   if test $LINK_RESULT = 0; then
+     echo "$2 library found: $1"
++    cfgwrite "HAS_LIBRARY_$1=yes"
+   else
+     if test "x$2" = "xrequired"; then
+       echo "failed to link $2 library: $1"
+@@ -331,16 +343,22 @@ checkLinking() {
+       exit 1
+     else
+       echo "failed to link $2 library: $1"
++      cfgwrite "HAS_LIBRARY_$1=no"
++      LIBS=$OLDLIBS
+     fi
+   fi
+   
+   cd $oldpwd
+   rm -rf $tmpdir
++
++  return $LINK_RESULT
+ }
+ 
+ checkDependencies() {
+-  checkLinking "SaxObjC" required;
+-  checkLinking "NGLdap"  required;
++  checkLinking "gnutls"      optional;
++  if test $? != 0; then
++      checkLinking "ssl"      required;
++  fi
+ }
+ 
+ runIt() {
+@@ -363,7 +381,7 @@ runIt() {
+     fi
+   else
+     genConfigMake;
+-    #checkDependencies;
++    checkDependencies;
+     
+     if test -x $NGSTREAMS_DIR/configure; then
+       if test $ARG_BEQUIET != 1; then
+diff --git a/maintenance/dummytool.c b/maintenance/dummytool.c
+new file mode 100644
+index 0000000..0566948
+--- /dev/null
++++ b/maintenance/dummytool.c
+@@ -0,0 +1,7 @@
++// Note: do not remove, used by ../configure
++
++#include <stdio.h>
++
++int main(int argc, char **argv) {
++  return 0;
++}
