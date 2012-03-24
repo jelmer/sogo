@@ -109,4 +109,3 @@ index d54766e..9288140 100644
  
  SYSTEM_LIB_DIR += -L/usr/local/lib -L/usr/lib
  ADDITIONAL_INCLUDE_DIRS += -I../../SoObjects
--- 

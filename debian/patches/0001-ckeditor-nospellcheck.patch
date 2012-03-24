@@ -19,4 +19,3 @@ index c54877e..48674e9 100644
      config.scayt_autoStartup = false;
      config.enterMode = CKEDITOR.ENTER_BR;
  };
--- 
