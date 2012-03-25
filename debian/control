@@ -4,6 +4,9 @@ Maintainer: Jeroen Dekkers <jeroen@dekkers.ch>
 Build-Depends: debhelper (>= 8), gobjc, libgnustep-base-dev, libsope-dev, libmemcached-dev, libxml2-dev, libsbjson-dev, libgnutls-dev, libldap2-dev, libcurl4-gnutls-dev
 Section: web
 Standards-Version: 3.9.3
+Homepage: http://www.sogo.nu/
+Vcs-Browser: https://github.com/dekkers/sogo-debian
+Vcs-Git: git://github.com/dekkers/sogo-debian.git
 
 Package: sogo
 Architecture: any
