@@ -3,7 +3,7 @@ Priority: optional
 Maintainer: Jeroen Dekkers <jeroen@dekkers.ch>
 Build-Depends: debhelper (>= 8), gobjc, libgnustep-base-dev, libsope-appserver-dev, libsope-core-dev, libsope-gdl1-dev, libsope-ldap-dev, libsope-mime-dev, libsope-xml-dev, libmemcached-dev, libxml2-dev, libsbjson-dev, libgnutls-dev, libldap2-dev, libcurl4-gnutls-dev
 Section: web
-Standards-Version: 3.9.2
+Standards-Version: 3.9.3
 
 Package: sogo
 Architecture: any
