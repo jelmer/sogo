@@ -1,13 +1,13 @@
 Source: sogo
 Priority: optional
 Maintainer: Jeroen Dekkers <jeroen@dekkers.ch>
-Build-Depends: debhelper (>= 8), gobjc, libgnustep-base-dev, libsope-appserver-dev, libsope-core-dev, libsope-gdl1-dev, libsope-ldap-dev, libsope-mime-dev, libsope-xml-dev, libmemcached-dev, libxml2-dev, libsbjson-dev, libgnutls-dev, libldap2-dev, libcurl4-gnutls-dev
+Build-Depends: debhelper (>= 8), gobjc, libgnustep-base-dev, libsope-dev, libmemcached-dev, libxml2-dev, libsbjson-dev, libgnutls-dev, libldap2-dev, libcurl4-gnutls-dev
 Section: web
 Standards-Version: 3.9.3
 
 Package: sogo
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, tmpreaper, sope4.9-libxmlsaxdriver, sope4.9-gdl1-postgresql | sope4.9-db-connector, sogo-common (= ${source:Version}), dbconfig-common, adduser
+Depends: ${shlibs:Depends}, ${misc:Depends}, tmpreaper, sogo-common (= ${source:Version}), dbconfig-common, adduser
 Description: Scalable groupware server
  SOGo is a groupware server built around OpenGroupware.org (OGo) and
  the SOPE application server with focus on scalability.
