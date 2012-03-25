@@ -91,7 +91,7 @@ index 0d01f99..d24e159 100644
      sprintf(&(buf[i*2]), "%02x", sha[i]);
    
 diff --git a/Tests/Unit/GNUmakefile b/Tests/Unit/GNUmakefile
-index 2b36a42..8f4980c 100644
+index 6c54a19..01770c1 100644
 --- a/Tests/Unit/GNUmakefile
 +++ b/Tests/Unit/GNUmakefile
 @@ -22,6 +22,7 @@ $(TEST_TOOL)_OBJC_FILES += \

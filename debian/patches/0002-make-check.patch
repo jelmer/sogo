@@ -25,7 +25,7 @@ index af8be35..9571607 100644
  
  include $(GNUSTEP_MAKEFILES)/aggregate.make
 diff --git a/Tests/Unit/GNUmakefile b/Tests/Unit/GNUmakefile
-index 5b22f55..2b36a42 100644
+index 5b22f55..6c54a19 100644
 --- a/Tests/Unit/GNUmakefile
 +++ b/Tests/Unit/GNUmakefile
 @@ -27,11 +27,17 @@ $(TEST_TOOL)_OBJC_FILES += \
@@ -42,7 +42,7 @@ index 5b22f55..2b36a42 100644
 +	-L../../SoObjects/SOGo/SOGo.framework/Versions/Current -L../../SOPE/NGCards/obj -L../../SOPE/GDLContentStore/obj -lSOGo -lNGMime -lNGCards -lGDLContentStore -lNGExtensions -lSBJson -lobjc \
 +	-L/usr/local/lib  -lSaxObjC \
 +	-Wl,-rpath,../../SoObjects/SOGo/SOGo.framework/Versions/Current -Wl,-rpath,../../SOPE/NGCards/obj -Wl,-rpath,../../SOPE/GDLContentStore/obj -Wl,-rpath,../../OGoContentStore/obj
-+
++ADDITIONAL_LDFLAGS += -Wl,--no-as-needed
 +
 +check ::
 +	./obj/sogo-tests
