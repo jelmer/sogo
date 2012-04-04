@@ -4,8 +4,8 @@ Subject: Read configuration from /etc
 
 ---
  SoObjects/SOGo/SOGoSystemDefaults.m |   61 ++++++++++++++++++++++++++++------
- Tools/sogo-tool.m                   |    9 ++++-
- 2 files changed, 57 insertions(+), 13 deletions(-)
+ Tools/sogo-tool.m                   |    8 ++++-
+ 2 files changed, 57 insertions(+), 12 deletions(-)
 
 diff --git a/SoObjects/SOGo/SOGoSystemDefaults.m b/SoObjects/SOGo/SOGoSystemDefaults.m
 index f617d6d..cb656ea 100644
@@ -97,7 +97,7 @@ index f617d6d..cb656ea 100644
    [self injectSOGoDefaults: ud];
  
 diff --git a/Tools/sogo-tool.m b/Tools/sogo-tool.m
-index fc93456..c26192d 100644
+index fc93456..3173d63 100644
 --- a/Tools/sogo-tool.m
 +++ b/Tools/sogo-tool.m
 @@ -221,8 +221,14 @@ static void
@@ -116,11 +116,3 @@ index fc93456..c26192d 100644
    defaultsOverrides = [NSMutableDictionary new];
    [defaultsOverrides setObject: [NSNumber numberWithInt: 0]
                          forKey: @"SOGoLDAPQueryLimit"];
-@@ -245,7 +251,6 @@ main (int argc, char **argv, char **env)
-   pool = [NSAutoreleasePool new];
- 
-   [SOGoSystemDefaults sharedSystemDefaults];
--
-   ud = [NSUserDefaults standardUserDefaults];
-   setupUserDefaults (ud);
- 
