@@ -1,0 +1,6 @@
+{
+  SOGoProfileURL = "postgresql://_DBC_DBUSER_:_DBC_DBPASS_@_DBC_DBSERVER_:_DBC_DBPORT_/_DBC_DBNAME_/sogo_user_profile";
+  OCSFolderInfoURL = "postgresql://_DBC_DBUSER_:_DBC_DBPASS_@_DBC_DBSERVER_:_DBC_DBPORT_/_DBC_DBNAME_/sogo_folder_info";
+  OCSSessionsFolderURL = "postgresql://_DBC_DBUSER_:_DBC_DBPASS_@_DBC_DBSERVER_:_DBC_DBPORT_/_DBC_DBNAME_/sogo_sessions_folder";
+  OCSEMailAlarmsFolderURL = "postgresql://_DBC_DBUSER_:_DBC_DBPASS_@_DBC_DBSERVER_:_DBC_DBPORT_/_DBC_DBNAME_/sogo_alarms_folder";
+}

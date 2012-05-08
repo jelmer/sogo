@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 set -e
 
@@ -11,6 +11,10 @@ set -e
 #          <package-being-installed> <version> `removing'
 #          <conflicting-package> <version>
 # for details, see /usr/share/doc/packaging-manual/
+
+. /usr/share/debconf/confmodule
+. /usr/share/dbconfig-common/dpkg/prerm
+dbc_go sogo $@
 
 #DEBHELPER#
 

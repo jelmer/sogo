@@ -1,7 +1,7 @@
-etc/default/sogo
-etc/apache2/conf.d/SOGo.conf
+Scripts/sogo-default etc/default/sogo
+Apache/SOGo.conf etc/apache2/conf.d/SOGo.conf
 usr/sbin/*
 usr/lib/GNUstep/*
 usr/lib/lib*
 usr/include/GNUstep/*
-usr/share/lintian/*
+debian/db.conf.template usr/share/sogo/

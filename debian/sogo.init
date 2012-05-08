@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 ### BEGIN INIT INFO
 # Provides:          sogo
 # Required-Start:    $remote_fs $network
@@ -35,11 +35,14 @@ NAME=sogo
 DAEMON=/usr/sbin/sogod
 DESC="SOGo"
 
-USER=$NAME
+USER=sogo
+GROUP=sogo
 PREFORK=1
 
 PIDFILE=/var/run/$NAME/$NAME.pid
 LOGFILE=/var/log/$NAME/$NAME.log
+
+DAEMON_OPTS="-WOWorkersCount $PREFORK -WOPidFile $PIDFILE -WOLogFile $LOGFILE"
 
 if [ -f /etc/default/$NAME ]; then
     . /etc/default/$NAME
@@ -47,25 +50,20 @@ fi
 
 . /lib/lsb/init-functions
 
-if [ ! -x $DAEMON ]; then
-    log_failure_msg "$DAEMON is not executable."
-    exit 1
-fi
+test -x $DAEMON || exit 0
 
 set -e
 
 . /usr/share/GNUstep/Makefiles/GNUstep.sh
 
-DAEMON_OPTS="-WOWorkersCount $PREFORK -WOPidFile $PIDFILE -WOLogFile $LOGFILE"
-
 case "$1" in
   start)
 	log_daemon_msg "Starting $DESC" "$NAME"
 
-        # Ensure directory's existence and permissions
-        install -o $USER -g adm -m 755 -d /var/run/$NAME
-        install -o $USER -g adm -m 750 -d /var/spool/$NAME
-        install -o $USER -g adm -m 750 -d /var/log/$NAME
+        # Ensure run directory's existence and permissions
+	if [ ! -d /var/run/sogo ]; then
+            install -o $USER -g $GROUP -d /var/run/sogo
+	fi
 
 	if ! start-stop-daemon -c $USER --quiet --start --pidfile $PIDFILE --exec $DAEMON -- $DAEMON_OPTS 
 	then
@@ -75,16 +73,16 @@ case "$1" in
 	;;
   stop)
 	log_daemon_msg "Stopping $DESC" "$NAME"
-	start-stop-daemon --stop --pidfile $PIDFILE --retry=TERM/20/KILL/5
+	start-stop-daemon --stop --oknodo --pidfile $PIDFILE --retry=TERM/20/KILL/5
 	log_end_msg 0
 	;;
   restart|force-reload)
 	log_daemon_msg "Restarting $DESC" "$NAME"
-	start-stop-daemon --stop --pidfile $PIDFILE --retry=TERM/20/KILL/5
-        # Ensure directory's existence and permissions
-        install -o sogo -g adm -m 755 -d /var/run/$NAME
-        install -o sogo -g adm -m 750 -d /var/spool/$NAME
-        install -o sogo -g adm -m 750 -d /var/log/$NAME
+	start-stop-daemon --stop --oknodo --pidfile $PIDFILE --retry=TERM/20/KILL/5
+        # Ensure run directory's existence and permissions
+	if [ ! -d /var/run/sogo ]; then
+            install -o $USER -g $GROUP -d /var/run/sogo
+	fi
 	start-stop-daemon -c $USER --quiet --start --pidfile $PIDFILE --exec $DAEMON -- $DAEMON_OPTS 
 	log_end_msg 0
 	;;
