@@ -13,8 +13,9 @@ Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}, tmpreaper, sogo-common (= ${source:Version}), adduser, zip
 Description: Scalable groupware server
  SOGo is a groupware server built around OpenGroupware.org (OGo) and
- the SOPE application server with focus on scalability.
- The Inverse edition of this project has many feature enhancements:
+ the SOPE application server with focus on scalability. It has many
+ feature enhancements:
+ .
   * CalDAV and GroupDAV compliance
   * full handling of vCard as well as vCalendar/iCalendar formats
   * support for folder sharing and ACLs
