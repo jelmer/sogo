@@ -10,7 +10,7 @@ Vcs-Git: git://github.com/dekkers/sogo.git
 
 Package: sogo
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, tmpreaper, sogo-common (= ${source:Version}), adduser
+Depends: ${shlibs:Depends}, ${misc:Depends}, tmpreaper, sogo-common (= ${source:Version}), adduser, zip
 Description: Scalable groupware server
  SOGo is a groupware server built around OpenGroupware.org (OGo) and
  the SOPE application server with focus on scalability.
