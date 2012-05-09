@@ -1,0 +1,39 @@
+From: Jeroen Dekkers <jeroen@dekkers.ch>
+Date: Wed, 9 May 2012 19:03:05 +0200
+Subject: gcc 4.7 build fixes from http://www.sogo.nu/bugs/view.php?id=1761
+
+---
+ SOPE/GDLContentStore/EOQualifier+GCS.m |    4 ++++
+ SOPE/GDLContentStore/GCSFolder.m       |    4 ++++
+ 2 files changed, 8 insertions(+)
+
+diff --git a/SOPE/GDLContentStore/EOQualifier+GCS.m b/SOPE/GDLContentStore/EOQualifier+GCS.m
+index 42fed64..255525e 100644
+--- a/SOPE/GDLContentStore/EOQualifier+GCS.m
++++ b/SOPE/GDLContentStore/EOQualifier+GCS.m
+@@ -27,6 +27,10 @@
+ 
+ #import "EOQualifier+GCS.h"
+ 
++#if __GNU_LIBOBJC__ >= 20100911
++#  define sel_eq(__A__,__B__) sel_isEqual(__A__,__B__)
++#endif
++
+ @implementation EOQualifier(GCS)
+ 
+ - (void)_appendAndQualifier:(EOAndQualifier *)_q 
+diff --git a/SOPE/GDLContentStore/GCSFolder.m b/SOPE/GDLContentStore/GCSFolder.m
+index 8361ca6..5e7c141 100644
+--- a/SOPE/GDLContentStore/GCSFolder.m
++++ b/SOPE/GDLContentStore/GCSFolder.m
+@@ -44,6 +44,10 @@
+ #import "EOQualifier+GCS.h"
+ #import "GCSStringFormatter.h"
+ 
++#if __GNU_LIBOBJC__ >= 20100911
++#  define sel_eq(__A__,__B__) sel_isEqual(__A__,__B__)
++#endif
++
+ typedef enum {
+   noTableRequired = 0,
+   quickTableRequired = 1,
