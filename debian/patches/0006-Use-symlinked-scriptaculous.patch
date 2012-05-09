@@ -4,7 +4,7 @@ Subject: Use symlinked scriptaculous
 
 ---
  UI/Templates/UIxPageFrame.wox |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/UI/Templates/UIxPageFrame.wox b/UI/Templates/UIxPageFrame.wox
 index 3176d3e..eab0353 100644

@@ -4,7 +4,7 @@ Subject: ckeditor-nospellcheck
 
 ---
  UI/WebServerResources/ckeditor/config.js |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/UI/WebServerResources/ckeditor/config.js b/UI/WebServerResources/ckeditor/config.js
 index c54877e..48674e9 100644

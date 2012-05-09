@@ -3,7 +3,7 @@ Date: Sat, 24 Mar 2012 02:17:19 +0100
 Subject: Read configuration from /etc
 
 ---
- SoObjects/SOGo/SOGoSystemDefaults.m |   61 ++++++++++++++++++++++++++++------
+ SoObjects/SOGo/SOGoSystemDefaults.m |   61 ++++++++++++++++++++++++++++-------
  Tools/sogo-tool.m                   |    8 ++++-
  2 files changed, 57 insertions(+), 12 deletions(-)
 

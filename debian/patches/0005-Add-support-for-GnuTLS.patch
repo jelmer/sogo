@@ -3,8 +3,8 @@ Date: Sat, 24 Mar 2012 15:39:02 +0100
 Subject: Add support for GnuTLS
 
 ---
- SoObjects/SOGo/GNUmakefile.preamble          |   10 ++++-
- SoObjects/SOGo/NSString+Utilities.m          |   16 ++++++
+ SoObjects/SOGo/GNUmakefile.preamble          |   10 +++-
+ SoObjects/SOGo/NSString+Utilities.m          |   16 +++++++
  Tests/Unit/GNUmakefile                       |    1 +
  Tests/Unit/TestNSString+MD5SHA1.m            |   64 ++++++++++++++++++++++++++
  UI/MailPartViewers/GNUmakefile.preamble      |    4 ++
