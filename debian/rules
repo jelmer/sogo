@@ -14,8 +14,9 @@ override_dh_auto_configure:
 
 override_dh_auto_install:
 	$(MAKE) DESTDIR=$(CURDIR)/debian/tmp GNUSTEP_INSTALLATION_DOMAIN=SYSTEM install
-	mkdir -p debian/tmp/etc/default
+	mkdir -p debian/tmp/etc/default debian/tmp/etc/cron.d
 	cp Scripts/sogo-default debian/tmp/etc/default/sogo
+	cp Scripts/sogo.cron debian/tmp/etc/cron.d/sogo
 # Remove javascript libraries already packaged by Debian.
 # Revert temporary, doesn't work
 	rm -r debian/tmp/usr/lib/GNUstep/SOGo/WebServerResources/ckeditor
