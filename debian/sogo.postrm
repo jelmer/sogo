@@ -20,7 +20,6 @@ case "$1" in
         rm -rf /var/spool/sogo
         rm -rf /var/log/sogo
         rm -rf /var/run/sogo
-        rm -f /etc/sogo/debconf.conf
         ;;
 
     remove|upgrade|failed-upgrade|abort-install|abort-upgrade|disappear)
@@ -30,17 +29,6 @@ case "$1" in
         echo "postrm called with unknown argument \`$1'" >&2
         exit 0
 esac
-
-if [ -f /usr/share/debconf/confmodule ]; then
-        . /usr/share/debconf/confmodule
-fi
-if [ -f /usr/share/dbconfig-common/dpkg/postrm ]; then
-        . /usr/share/dbconfig-common/dpkg/postrm 
-        dbc_go sogo $@
-fi
-if [ -f /usr/share/debconf/confmodule ]; then
-        db_stop
-fi
 
 #DEBHELPER#
 
