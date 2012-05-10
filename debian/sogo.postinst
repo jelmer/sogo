@@ -22,8 +22,10 @@ case "$1" in
             --no-create-home --disabled-login sogo
         fi
 
-	chown -R sogo:adm /var/log/sogo
+        chown -R sogo:adm /var/log/sogo
         chmod -R 750 /var/log/sogo
+        chown -R sogo: /var/spool/sogo
+        chmod -R 750 /var/spool/sogo
         ;;
 
     abort-upgrade|abort-remove|abort-deconfigure)
