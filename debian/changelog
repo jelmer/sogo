@@ -1,5 +1,5 @@
-sogo (1.3.14-1~unreleased) UNRELEASED; urgency=low
+sogo (1.3.14-1) unstable; urgency=low
 
-  * Initial packaging for Debian.
+  * Initial release. (Closes: #584073)
 
- -- Jeroen Dekkers <jeroen@dekkers.ch>  Sat, 24 Mar 2012 00:01:59 +0100
+ -- Jeroen Dekkers <jeroen@dekkers.ch>  Thu, 10 May 2012 23:35:49 +0200
