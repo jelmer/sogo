@@ -1,0 +1,12 @@
+SOGo for Debian
+---------------
+
+The SOGo debian package differs from upstream in placing the
+configuration file in /etc/sogo/sogo.conf instead of using the GNUstep
+user defaults that are placed under the home directory of the user
+used to run SOGo. This file is parsed as GNUstep defaults in the
+"sogod" domain, this means you must you should not specify the sogod
+domain in the configuration file (there shouldn't be "sogod = {" in
+/etc/sogo/sogo.conf).
+
+ -- Jeroen Dekkers <jeroen@dekkers.ch>, Thu, 10 May 2012 18:06:55 +0200
