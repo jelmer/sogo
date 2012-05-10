@@ -28,7 +28,7 @@ Description: Scalable groupware server
 
 Package: sogo-common
 Architecture: all
-Depends: ${misc:Depends}, ckeditor, libjs-scriptaculous, libjs-prototype
+Depends: ${misc:Depends}, ckeditor, libjs-prototype
 Suggests: httpd
 Description: Scalable groupware server - common files
  SOGo is a groupware server built around OpenGroupware.org (OGo) and
