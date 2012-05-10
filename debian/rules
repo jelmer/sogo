@@ -18,7 +18,6 @@ override_dh_auto_install:
 	cp Scripts/sogo-default debian/tmp/etc/default/sogo
 	cp Scripts/sogo.cron debian/tmp/etc/cron.d/sogo
 # Remove javascript libraries already packaged by Debian.
-# Revert temporary, doesn't work
 	rm -r debian/tmp/usr/lib/GNUstep/SOGo/WebServerResources/ckeditor
 	dh_link -psogo-common usr/share/javascript/ckeditor usr/share/GNUstep/SOGo/WebServerResources/ckeditor
 	rm debian/tmp/usr/lib/GNUstep/SOGo/WebServerResources/scriptaculous.js
