@@ -4,14 +4,14 @@ Subject: Add support for GnuTLS
 
 ---
  SoObjects/SOGo/GNUmakefile.preamble          |   10 +++-
- SoObjects/SOGo/NSString+Utilities.m          |   16 +++++++
+ SoObjects/SOGo/NSString+Utilities.m          |   42 +++++++++++++++++
  Tests/Unit/GNUmakefile                       |    1 +
  Tests/Unit/TestNSString+MD5SHA1.m            |   64 ++++++++++++++++++++++++++
  UI/MailPartViewers/GNUmakefile.preamble      |    4 ++
  UI/MailPartViewers/UIxMailPartSignedViewer.m |   14 ++++++
  configure                                    |   36 +++++++++++----
  maintenance/dummytool.c                      |    7 +++
- 8 files changed, 142 insertions(+), 10 deletions(-)
+ 8 files changed, 168 insertions(+), 10 deletions(-)
  create mode 100644 Tests/Unit/TestNSString+MD5SHA1.m
  create mode 100644 UI/MailPartViewers/GNUmakefile.preamble
  create mode 100644 maintenance/dummytool.c
@@ -38,7 +38,7 @@ index 9334ba4..da6986f 100644
  ifeq ($(findstring openbsd, $(GNUSTEP_HOST_OS)), openbsd)
  SOGo_LIBRARIES_DEPEND_UPON += -lcrypto
 diff --git a/SoObjects/SOGo/NSString+Utilities.m b/SoObjects/SOGo/NSString+Utilities.m
-index 0d01f99..d24e159 100644
+index 0d01f99..07294e4 100644
 --- a/SoObjects/SOGo/NSString+Utilities.m
 +++ b/SoObjects/SOGo/NSString+Utilities.m
 @@ -1,6 +1,7 @@
@@ -66,11 +66,28 @@ index 0d01f99..d24e159 100644
  
  static NSMutableCharacterSet *urlNonEndingChars = nil;
  static NSMutableCharacterSet *urlAfterEndingChars = nil;
-@@ -541,7 +549,11 @@ static int cssEscapingCount;
+@@ -537,11 +545,28 @@ static int cssEscapingCount;
+   unsigned char md[MD5_DIGEST_LENGTH];
+   char buf[80];
+   int i;
++#ifdef HAVE_GNUTLS
++  static BOOL didGlobalInit = NO;
++#endif
+   
    memset(md, 0, MD5_DIGEST_LENGTH);
    memset(buf, 0, 80);
    
 +#ifdef HAVE_GNUTLS
++  if (!didGlobalInit) {
++    /* Global system initialization*/
++    if (gnutls_global_init()) {
++      [self release];
++      return nil;
++    }
++
++    didGlobalInit = YES;
++  }
++
 +  gnutls_hash_fast (GNUTLS_DIG_MD5, (const void *)[self UTF8String], strlen([self UTF8String]), md);
 +#else
    EVP_Digest((const void *) [self UTF8String], strlen([self UTF8String]), md, NULL, EVP_md5(), NULL);
@@ -78,11 +95,28 @@ index 0d01f99..d24e159 100644
    for (i = 0; i < MD5_DIGEST_LENGTH; i++)
      sprintf(&(buf[i*2]), "%02x", md[i]);
    
-@@ -557,7 +569,11 @@ static int cssEscapingCount;
+@@ -553,11 +578,28 @@ static int cssEscapingCount;
+   unsigned char sha[SHA_DIGEST_LENGTH];
+   char buf[80];
+   int i;
++#ifdef HAVE_GNUTLS
++  static BOOL didGlobalInit = NO;
++#endif
+   
    memset(sha, 0, SHA_DIGEST_LENGTH);
    memset(buf, 0, 80);
    
 +#ifdef HAVE_GNUTLS
++  if (!didGlobalInit) {
++    /* Global system initialization*/
++    if (gnutls_global_init()) {
++      [self release];
++      return nil;
++    }
++
++    didGlobalInit = YES;
++  }
++
 +  gnutls_hash_fast (GNUTLS_DIG_SHA1, (const void *)[self UTF8String], strlen([self UTF8String]), sha);
 +#else
    SHA1((const void *)[self UTF8String], strlen([self UTF8String]), sha);
