@@ -38,7 +38,7 @@ index 9334ba4..da6986f 100644
  ifeq ($(findstring openbsd, $(GNUSTEP_HOST_OS)), openbsd)
  SOGo_LIBRARIES_DEPEND_UPON += -lcrypto
 diff --git a/SoObjects/SOGo/NSString+Utilities.m b/SoObjects/SOGo/NSString+Utilities.m
-index 0d01f99..07294e4 100644
+index 9cfe278..914d76b 100644
 --- a/SoObjects/SOGo/NSString+Utilities.m
 +++ b/SoObjects/SOGo/NSString+Utilities.m
 @@ -1,6 +1,7 @@
@@ -49,7 +49,7 @@ index 0d01f99..07294e4 100644
   *
   * Author: Wolfgang Sourdeau <wsourdeau@inverse.ca>
   *         Ludovic Marcotte <lmarcotte@inverse.ca>
-@@ -46,9 +47,16 @@
+@@ -47,9 +48,16 @@
  
  #define _XOPEN_SOURCE 1
  #include <unistd.h>
@@ -66,7 +66,7 @@ index 0d01f99..07294e4 100644
  
  static NSMutableCharacterSet *urlNonEndingChars = nil;
  static NSMutableCharacterSet *urlAfterEndingChars = nil;
-@@ -537,11 +545,28 @@ static int cssEscapingCount;
+@@ -549,11 +557,28 @@ static int cssEscapingCount;
    unsigned char md[MD5_DIGEST_LENGTH];
    char buf[80];
    int i;
@@ -95,7 +95,7 @@ index 0d01f99..07294e4 100644
    for (i = 0; i < MD5_DIGEST_LENGTH; i++)
      sprintf(&(buf[i*2]), "%02x", md[i]);
    
-@@ -553,11 +578,28 @@ static int cssEscapingCount;
+@@ -565,11 +590,28 @@ static int cssEscapingCount;
    unsigned char sha[SHA_DIGEST_LENGTH];
    char buf[80];
    int i;

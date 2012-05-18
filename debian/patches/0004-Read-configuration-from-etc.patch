@@ -97,7 +97,7 @@ index f617d6d..cb656ea 100644
    [self injectSOGoDefaults: ud];
  
 diff --git a/Tools/sogo-tool.m b/Tools/sogo-tool.m
-index fc93456..3173d63 100644
+index ca7f052..9351c78 100644
 --- a/Tools/sogo-tool.m
 +++ b/Tools/sogo-tool.m
 @@ -221,8 +221,14 @@ static void

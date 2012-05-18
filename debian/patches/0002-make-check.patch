@@ -50,7 +50,7 @@ index 5b22f55..6c54a19 100644
  -include GNUmakefile.preamble
  include $(GNUSTEP_MAKEFILES)/test-tool.make
 diff --git a/Tests/Unit/SOGoTestRunner.m b/Tests/Unit/SOGoTestRunner.m
-index 2dcaebd..9e4bb37 100644
+index 7d6637c..56fdfb9 100644
 --- a/Tests/Unit/SOGoTestRunner.m
 +++ b/Tests/Unit/SOGoTestRunner.m
 @@ -31,6 +31,8 @@
@@ -62,7 +62,7 @@ index 2dcaebd..9e4bb37 100644
  @implementation SOGoTestRunner
  
  + (SOGoTestRunner *) testRunner
-@@ -92,7 +94,7 @@
+@@ -89,7 +91,7 @@
    [allTestClasses autorelease];
    [self autorelease];
  
@@ -85,11 +85,11 @@ index f96e836..304843c 100644
  
  distclean :: clean
 diff --git a/UI/WebServerResources/GNUmakefile b/UI/WebServerResources/GNUmakefile
-index 2d49a69..21e9922 100644
+index dcd1957..996f589 100644
 --- a/UI/WebServerResources/GNUmakefile
 +++ b/UI/WebServerResources/GNUmakefile
-@@ -17,6 +17,8 @@ install ::
- 	  cp -r scriptaculous $(SOGO_WEBSERVERRESOURCESDIR)/; \
+@@ -16,6 +16,8 @@ install ::
+ 	  rm -rf $(SOGO_WEBSERVERRESOURCESDIR)/ckeditor/_source; \
  	fi
  
 +check ::

@@ -1,0 +1,358 @@
+From: Jeroen Dekkers <jeroen@dekkers.ch>
+Date: Thu, 10 May 2012 03:27:43 +0200
+Subject: Put private libraries in /usr/lib/sogo
+
+---
+ Main/GNUmakefile                       |    2 +-
+ Main/GNUmakefile.preamble              |    2 +-
+ OGoContentStore/GNUmakefile            |    2 ++
+ OGoContentStore/GNUmakefile.preamble   |    2 +-
+ OpenChange/GNUmakefile                 |    4 ++--
+ SOPE/GDLContentStore/GNUmakefile       |    1 +
+ SOPE/NGCards/GNUmakefile               |    1 +
+ SoObjects/SOGo/GNUmakefile             |    3 +++
+ SoObjects/common.make                  |    2 +-
+ Tests/Integration/GNUmakefile.preamble |    2 +-
+ Tests/Unit/GNUmakefile                 |    4 ++--
+ Tools/GNUmakefile                      |    2 ++
+ Tools/GNUmakefile.preamble             |    2 +-
+ UI/AdministrationUI/GNUmakefile        |    1 +
+ UI/Common/GNUmakefile                  |    1 +
+ UI/Contacts/GNUmakefile                |    1 +
+ UI/MailPartViewers/GNUmakefile         |    1 +
+ UI/MailerUI/GNUmakefile                |    1 +
+ UI/MainUI/GNUmakefile                  |    1 +
+ UI/PreferencesUI/GNUmakefile           |    1 +
+ UI/SOGoUI/GNUmakefile                  |    3 +++
+ UI/Scheduler/GNUmakefile               |    1 +
+ UI/common.make                         |    4 ++--
+ 23 files changed, 32 insertions(+), 12 deletions(-)
+
+diff --git a/Main/GNUmakefile b/Main/GNUmakefile
+index 3827767..4b61d72 100644
+--- a/Main/GNUmakefile
++++ b/Main/GNUmakefile
+@@ -6,7 +6,7 @@ include ../Version
+ 
+ ADDITIONAL_INCLUDE_DIRS += 
+ ADDITIONAL_LIB_DIRS += -L../SOPE/GDLContentStore/obj/
+-ADDITIONAL_LDFLAGS += -Wl,--no-as-needed
++ADDITIONAL_LDFLAGS += -Wl,--no-as-needed -Wl,--rpath,/usr/lib/sogo
+ 
+ SOGOD     = sogod
+ TOOL_NAME = $(SOGOD)
+diff --git a/Main/GNUmakefile.preamble b/Main/GNUmakefile.preamble
+index 675b591..e05b3aa 100644
+--- a/Main/GNUmakefile.preamble
++++ b/Main/GNUmakefile.preamble
+@@ -9,7 +9,7 @@ ADDITIONAL_INCLUDE_DIRS += \
+ 	-I..
+ 
+ ADDITIONAL_LIB_DIRS += \
+-	-L../SoObjects/SOGo/SOGo.framework  \
++	-L../SoObjects/SOGo/SOGo.framework/sogo  \
+ 	-L../OGoContentStore/$(GNUSTEP_OBJ_DIR)/ \
+ 	-L../SOPE/NGCards/$(GNUSTEP_OBJ_DIR)/
+ 
+diff --git a/OGoContentStore/GNUmakefile b/OGoContentStore/GNUmakefile
+index 3b7a48a..e435573 100644
+--- a/OGoContentStore/GNUmakefile
++++ b/OGoContentStore/GNUmakefile
+@@ -14,6 +14,7 @@ libOGoContentStore_INTERFACE_VERSION=$(MAJOR_VERSION).$(MINOR_VERSION)
+ 
+ ADDITIONAL_INCLUDE_DIRS += -I../SOPE
+ ADDITIONAL_LIB_DIRS += -L../SOPE/GDLContentStore/obj
++ADDITIONAL_LDFLAGS += -Wl,--rpath,/usr/lib/sogo
+ 
+ libOGoContentStore_OBJC_FILES +=		\
+ 	OCSiCalFieldExtractor.m			\
+@@ -29,6 +30,7 @@ libOGoContentStore_TYPEMODELS += \
+ ifneq ($(FHS_INSTALL_ROOT),)
+ GNUSTEP_HEADERS=$(DESTDIR)$(FHS_INSTALL_ROOT)/include
+ endif
++GNUSTEP_TARGET_LDIR=sogo
+ include $(GNUSTEP_MAKEFILES)/library.make
+ include $(GNUSTEP_MAKEFILES)/tool.make
+ -include GNUmakefile.postamble
+diff --git a/OGoContentStore/GNUmakefile.preamble b/OGoContentStore/GNUmakefile.preamble
+index b2d9374..8ec2581 100644
+--- a/OGoContentStore/GNUmakefile.preamble
++++ b/OGoContentStore/GNUmakefile.preamble
+@@ -12,7 +12,7 @@ libOGoContentStore_LIBRARIES_DEPEND_UPON += \
+ 
+ ADDITIONAL_INCLUDE_DIRS += -I. -I.. -I../SOPE -I../SoObjects
+ 
+-ADDITIONAL_LIB_DIRS += -L./$(GNUSTEP_OBJ_DIR) -L../SOPE/NGCards/$(GNUSTEP_OBJ_DIR)/ -L../SoObjects/SOGo/SOGo.framework/
++ADDITIONAL_LIB_DIRS += -L./$(GNUSTEP_OBJ_DIR) -L../SOPE/NGCards/$(GNUSTEP_OBJ_DIR)/ -L../SoObjects/SOGo/SOGo.framework/sogo/
+ 
+ SYSTEM_LIB_DIR += -L/usr/local/lib -L/usr/lib
+ 
+diff --git a/OpenChange/GNUmakefile b/OpenChange/GNUmakefile
+index 0f3fb1a..b217b5e 100644
+--- a/OpenChange/GNUmakefile
++++ b/OpenChange/GNUmakefile
+@@ -164,13 +164,13 @@ LIBMAPISTORE_LIBS = $(shell pkg-config libmapistore --libs) -lmapiproxy
+ 
+ $(MAPISTORESOGO)_INSTALL_DIR = $(DESTDIR)/$(SAMBA_LIB_DIR)/mapistore_backends
+ $(MAPISTORESOGO)_LIB_DIRS += \
+-        -L../SoObjects/SOGo/SOGo.framework/ -lSOGo \
++        -L../SoObjects/SOGo/SOGo.framework/sogo/ -lSOGo \
+ 	$(LIBMAPI_LIBS) \
+ 	$(LIBMAPISTORE_LIBS)
+ 
+ $(SOGOBACKEND)_LIB_DIRS += \
+         -L../OGoContentStore/$(GNUSTEP_OBJ_DIR)/ -lOGoContentStore \
+-        -L../SoObjects/SOGo/SOGo.framework/ -lSOGo \
++        -L../SoObjects/SOGo/SOGo.framework/sogo/ -lSOGo \
+ 	$(LIBMAPI_LIBS) \
+ 	$(LIBMAPISTORE_LIBS)
+ 
+diff --git a/SOPE/GDLContentStore/GNUmakefile b/SOPE/GDLContentStore/GNUmakefile
+index e0e50ca..b41faa8 100644
+--- a/SOPE/GDLContentStore/GNUmakefile
++++ b/SOPE/GDLContentStore/GNUmakefile
+@@ -68,6 +68,7 @@ ifneq ($(frameworks),yes)
+ ifneq ($(FHS_INSTALL_ROOT),)
+ GNUSTEP_HEADERS=$(DESTDIR)$(FHS_INSTALL_ROOT)/include
+ endif
++GNUSTEP_TARGET_LDIR=sogo
+ include $(GNUSTEP_MAKEFILES)/library.make
+ else
+ include $(GNUSTEP_MAKEFILES)/framework.make
+diff --git a/SOPE/NGCards/GNUmakefile b/SOPE/NGCards/GNUmakefile
+index 90f7584..31cfdd8 100644
+--- a/SOPE/NGCards/GNUmakefile
++++ b/SOPE/NGCards/GNUmakefile
+@@ -131,6 +131,7 @@ ifneq ($(frameworks),yes)
+ ifneq ($(FHS_INSTALL_ROOT),)
+ GNUSTEP_HEADERS=$(DESTDIR)$(FHS_INSTALL_ROOT)/include
+ endif
++GNUSTEP_TARGET_LDIR=sogo
+ include $(GNUSTEP_MAKEFILES)/library.make
+ else
+ include $(GNUSTEP_MAKEFILES)/framework.make
+diff --git a/SoObjects/SOGo/GNUmakefile b/SoObjects/SOGo/GNUmakefile
+index c099e3c..2ce8740 100644
+--- a/SoObjects/SOGo/GNUmakefile
++++ b/SoObjects/SOGo/GNUmakefile
+@@ -11,6 +11,8 @@ SOGo_INSTALL_DIR = $(DESTDIR)$(GNUSTEP_$(GNUSTEP_INSTALLATION_DOMAIN)_FRAMEWORKS
+ 
+ SOGo_VERSION=$(MAJOR_VERSION).$(MINOR_VERSION).$(SUBMINOR_VERSION)
+ 
++ADDITIONAL_LDFLAGS += -Wl,--rpath,/usr/lib/sogo
++
+ SOGo_HEADER_FILES = \
+ 	SOGoBuild.h \
+ 	SOGoProductLoader.h		\
+@@ -161,6 +163,7 @@ ADDITIONAL_LDFLAGS += -lmemcached
+ ifneq ($(FHS_INSTALL_ROOT),)
+ GNUSTEP_HEADERS=$(DESTDIR)$(FHS_INSTALL_ROOT)/include
+ endif
++GNUSTEP_TARGET_LDIR=sogo
+ include $(GNUSTEP_MAKEFILES)/framework.make
+ include $(GNUSTEP_MAKEFILES)/library.make
+ include $(GNUSTEP_MAKEFILES)/tool.make
+diff --git a/SoObjects/common.make b/SoObjects/common.make
+index 8dc2d8c..20e7b03 100644
+--- a/SoObjects/common.make
++++ b/SoObjects/common.make
+@@ -18,7 +18,7 @@ ADDITIONAL_INCLUDE_DIRS += \
+         -I../../SOPE
+ 
+ ADDITIONAL_LIB_DIRS += \
+-        -L../SOGo/SOGo.framework/ \
++        -L../SOGo/SOGo.framework/sogo/ \
+ 	-L../../SOGo/$(GNUSTEP_OBJ_DIR)/ \
+ 	-L../../OGoContentStore/$(GNUSTEP_OBJ_DIR)/ \
+ 	-L../../SOPE/NGCards/$(GNUSTEP_OBJ_DIR)/ \
+diff --git a/Tests/Integration/GNUmakefile.preamble b/Tests/Integration/GNUmakefile.preamble
+index 90cc86a..5cd238c 100644
+--- a/Tests/Integration/GNUmakefile.preamble
++++ b/Tests/Integration/GNUmakefile.preamble
+@@ -10,7 +10,7 @@ ADDITIONAL_INCLUDE_DIRS += \
+ 	-D_GNU_SOURCE -I../../SOPE/ -I../../SoObjects/
+ 
+ ADDITIONAL_LIB_DIRS += \
+-	-L../../SoObjects/SOGo/SOGo.framework -lSOGo \
++	-L../../SoObjects/SOGo/SOGo.framework/sogo -lSOGo \
+ 	-L../../OGoContentStore/$(GNUSTEP_OBJ_DIR)/ -lOGoContentStore \
+ 	-L../../SOPE/GDLContentStore/$(GNUSTEP_OBJ_DIR)/ -lGDLContentStore \
+ 	-L../../SOPE/NGCards/$(GNUSTEP_OBJ_DIR)/ -lNGCards \
+diff --git a/Tests/Unit/GNUmakefile b/Tests/Unit/GNUmakefile
+index 01770c1..42df04c 100644
+--- a/Tests/Unit/GNUmakefile
++++ b/Tests/Unit/GNUmakefile
+@@ -32,9 +32,9 @@ $(TEST_TOOL)_CPPFLAGS += \
+ 	-Wall -D_GNU_SOURCE -I../../SOPE/ -I../../SoObjects/ -I../../UI/
+ 
+ ADDITIONAL_LIB_DIRS += \
+-	-L../../SoObjects/SOGo/SOGo.framework/Versions/Current -L../../SOPE/NGCards/obj -L../../SOPE/GDLContentStore/obj -lSOGo -lNGMime -lNGCards -lGDLContentStore -lNGExtensions -lSBJson -lobjc \
++	-L../../SoObjects/SOGo/SOGo.framework/Versions/Current/sogo -L../../SOPE/NGCards/obj -L../../SOPE/GDLContentStore/obj -lSOGo -lNGMime -lNGCards -lGDLContentStore -lNGExtensions -lSBJson -lobjc \
+ 	-L/usr/local/lib  -lSaxObjC \
+-	-Wl,-rpath,../../SoObjects/SOGo/SOGo.framework/Versions/Current -Wl,-rpath,../../SOPE/NGCards/obj -Wl,-rpath,../../SOPE/GDLContentStore/obj -Wl,-rpath,../../OGoContentStore/obj
++	-Wl,-rpath,../../SoObjects/SOGo/SOGo.framework/Versions/Current/sogo -Wl,-rpath,../../SOPE/NGCards/obj -Wl,-rpath,../../SOPE/GDLContentStore/obj -Wl,-rpath,../../OGoContentStore/obj
+ ADDITIONAL_LDFLAGS += -Wl,--no-as-needed
+ 
+ check ::
+diff --git a/Tools/GNUmakefile b/Tools/GNUmakefile
+index 99235cb..4d0b728 100644
+--- a/Tools/GNUmakefile
++++ b/Tools/GNUmakefile
+@@ -4,6 +4,8 @@ include ../config.make
+ include $(GNUSTEP_MAKEFILES)/common.make
+ include ../Version
+ 
++ADDITIONAL_LDFLAGS += -Wl,--rpath,/usr/lib/sogo
++
+ ###
+ SOGO_TOOL = sogo-tool
+ $(SOGO_TOOL)_INSTALL_DIR = $(SOGO_ADMIN_TOOLS)
+diff --git a/Tools/GNUmakefile.preamble b/Tools/GNUmakefile.preamble
+index 8f087f0..103a0b9 100644
+--- a/Tools/GNUmakefile.preamble
++++ b/Tools/GNUmakefile.preamble
+@@ -10,7 +10,7 @@ ADDITIONAL_INCLUDE_DIRS += \
+ 	-D_GNU_SOURCE -I../SOPE/ -I../SoObjects/
+ 
+ ADDITIONAL_LIB_DIRS += \
+-	-L../SoObjects/SOGo/SOGo.framework -lSOGo \
++	-L../SoObjects/SOGo/SOGo.framework/sogo -lSOGo \
+ 	-L../OGoContentStore/$(GNUSTEP_OBJ_DIR)/ -lOGoContentStore \
+ 	-L../SOPE/GDLContentStore/$(GNUSTEP_OBJ_DIR)/ -lGDLContentStore \
+ 	-L../SOPE/NGCards/$(GNUSTEP_OBJ_DIR)/ -lNGCards \
+diff --git a/UI/AdministrationUI/GNUmakefile b/UI/AdministrationUI/GNUmakefile
+index ef8acf8..3504f4c 100644
+--- a/UI/AdministrationUI/GNUmakefile
++++ b/UI/AdministrationUI/GNUmakefile
+@@ -25,6 +25,7 @@ AdministrationUI_LOCALIZED_RESOURCE_FILES += \
+ 
+ ADDITIONAL_INCLUDE_DIRS += -I../../SOPE/
+ ADDITIONAL_LIB_DIRS += -L../../SOPE/GDLContentStore/obj/
++ADDITIONAL_LDFLAGS += -Wl,--rpath,/usr/lib/sogo
+ 
+ -include GNUmakefile.preamble
+ include $(GNUSTEP_MAKEFILES)/bundle.make
+diff --git a/UI/Common/GNUmakefile b/UI/Common/GNUmakefile
+index a8bc5e0..4d55ae5 100644
+--- a/UI/Common/GNUmakefile
++++ b/UI/Common/GNUmakefile
+@@ -33,6 +33,7 @@ CommonUI_LOCALIZED_RESOURCE_FILES +=	\
+ 
+ ADDITIONAL_INCLUDE_DIRS += -I../../SOPE/
+ ADDITIONAL_LIB_DIRS += -L../../SOPE/GDLContentStore/obj/
++ADDITIONAL_LDFLAGS += -Wl,--rpath,/usr/lib/sogo
+ 
+ -include GNUmakefile.preamble
+ include $(GNUSTEP_MAKEFILES)/bundle.make
+diff --git a/UI/Contacts/GNUmakefile b/UI/Contacts/GNUmakefile
+index 8ba2a84..fc497b5 100644
+--- a/UI/Contacts/GNUmakefile
++++ b/UI/Contacts/GNUmakefile
+@@ -37,6 +37,7 @@ ContactsUI_LOCALIZED_RESOURCE_FILES +=	\
+ 
+ ADDITIONAL_INCLUDE_DIRS += -I../../SOPE/
+ ADDITIONAL_LIB_DIRS += -L../../SOPE/GDLContentStore/obj/
++ADDITIONAL_LDFLAGS += -Wl,--rpath,/usr/lib/sogo
+ 
+ -include GNUmakefile.preamble
+ include $(GNUSTEP_MAKEFILES)/bundle.make
+diff --git a/UI/MailPartViewers/GNUmakefile b/UI/MailPartViewers/GNUmakefile
+index 7316f2c..8ac5555 100644
+--- a/UI/MailPartViewers/GNUmakefile
++++ b/UI/MailPartViewers/GNUmakefile
+@@ -37,6 +37,7 @@ MailPartViewers_LOCALIZED_RESOURCE_FILES += \
+ 
+ ADDITIONAL_INCLUDE_DIRS += $(shell xml2-config --cflags)
+ ADDITIONAL_LIB_DIRS += -L../../SOPE/GDLContentStore/obj/
++ADDITIONAL_LDFLAGS += -Wl,--rpath,/usr/lib/sogo
+ 
+ -include GNUmakefile.preamble
+ include $(GNUSTEP_MAKEFILES)/bundle.make
+diff --git a/UI/MailerUI/GNUmakefile b/UI/MailerUI/GNUmakefile
+index 129c468..0a2a97c 100644
+--- a/UI/MailerUI/GNUmakefile
++++ b/UI/MailerUI/GNUmakefile
+@@ -49,6 +49,7 @@ MailerUI_LOCALIZED_RESOURCE_FILES += \
+ 
+ ADDITIONAL_INCLUDE_DIRS += -I../../SOPE/
+ ADDITIONAL_LIB_DIRS += -L../../SOPE/GDLContentStore/obj/
++ADDITIONAL_LDFLAGS += -Wl,--rpath,/usr/lib/sogo
+ 
+ -include GNUmakefile.preamble
+ include $(GNUSTEP_MAKEFILES)/bundle.make
+diff --git a/UI/MainUI/GNUmakefile b/UI/MainUI/GNUmakefile
+index bf49f11..2abbfec 100644
+--- a/UI/MainUI/GNUmakefile
++++ b/UI/MainUI/GNUmakefile
+@@ -27,6 +27,7 @@ MainUI_LOCALIZED_RESOURCE_FILES += \
+ 
+ ADDITIONAL_INCLUDE_DIRS += -I../../SOPE/
+ ADDITIONAL_LIB_DIRS += -L../../SOPE/GDLContentStore/obj/
++ADDITIONAL_LDFLAGS += -Wl,--rpath,/usr/lib/sogo
+ 
+ -include GNUmakefile.preamble
+ include $(GNUSTEP_MAKEFILES)/bundle.make
+diff --git a/UI/PreferencesUI/GNUmakefile b/UI/PreferencesUI/GNUmakefile
+index 596b1d2..4cb9f5d 100644
+--- a/UI/PreferencesUI/GNUmakefile
++++ b/UI/PreferencesUI/GNUmakefile
+@@ -28,6 +28,7 @@ PreferencesUI_LOCALIZED_RESOURCE_FILES += \
+ 
+ ADDITIONAL_INCLUDE_DIRS += -I../../SOPE/
+ ADDITIONAL_LIB_DIRS += -L../../SOPE/GDLContentStore/obj/
++ADDITIONAL_LDFLAGS += -Wl,--rpath,/usr/lib/sogo
+ 
+ -include GNUmakefile.preamble
+ include $(GNUSTEP_MAKEFILES)/bundle.make
+diff --git a/UI/SOGoUI/GNUmakefile b/UI/SOGoUI/GNUmakefile
+index 2b781ca..da8dcce 100644
+--- a/UI/SOGoUI/GNUmakefile
++++ b/UI/SOGoUI/GNUmakefile
+@@ -11,6 +11,8 @@ libSOGoUI_HEADER_FILES_DIR         = .
+ libSOGoUI_HEADER_FILES_INSTALL_DIR = /SOGoUI
+ libSOGoUI_INTERFACE_VERSION	   = $(MAJOR_VERSION).$(MINOR_VERSION)
+ 
++ADDITIONAL_LDFLAGS += -Wl,--rpath,/usr/lib/sogo
++
+ libSOGoUI_HEADER_FILES +=	\
+ 	\
+ 	UIxJSClose.h		\
+@@ -32,5 +34,6 @@ libSOGoUI_OBJC_FILES +=		\
+ ifneq ($(FHS_INSTALL_ROOT),)
+ GNUSTEP_HEADERS=$(DESTDIR)$(FHS_INSTALL_ROOT)/include
+ endif
++GNUSTEP_TARGET_LDIR=sogo
+ include $(GNUSTEP_MAKEFILES)/library.make
+ -include GNUmakefile.postamble
+diff --git a/UI/Scheduler/GNUmakefile b/UI/Scheduler/GNUmakefile
+index f71bcd6..fe354db 100644
+--- a/UI/Scheduler/GNUmakefile
++++ b/UI/Scheduler/GNUmakefile
+@@ -72,6 +72,7 @@ SchedulerUI_RESOURCE_FILES +=		\
+ 
+ ADDITIONAL_INCLUDE_DIRS += -I../../SOPE/
+ ADDITIONAL_LIB_DIRS += -L../../SOPE/GDLContentStore/obj/
++ADDITIONAL_LDFLAGS += -Wl,--rpath,/usr/lib/sogo
+ 
+ -include GNUmakefile.preamble
+ include $(GNUSTEP_MAKEFILES)/bundle.make
+diff --git a/UI/common.make b/UI/common.make
+index 60288a7..0b36217 100644
+--- a/UI/common.make
++++ b/UI/common.make
+@@ -20,13 +20,13 @@ ifeq ($(GNUSTEP_BUILD_DIR),)
+ ADDITIONAL_LIB_DIRS += 				\
+         -L../../SOPE/NGCards/$(GNUSTEP_OBJ_DIR)	\
+ 	-L../SOGoUI/$(GNUSTEP_OBJ_DIR)		\
+-	-L../../SoObjects/SOGo/SOGo.framework/
++	-L../../SoObjects/SOGo/SOGo.framework/sogo/
+ 
+ else
+ RELBUILD_DIR_libNGCards = \
+ 	$(GNUSTEP_BUILD_DIR)/../../SOPE/NGCards/$(GNUSTEP_OBJ_DIR_NAME)
+ RELBUILD_DIR_libSOGo = \
+-	$(GNUSTEP_BUILD_DIR)/../../SoObjects/SOGo/SOGo.framework/
++	$(GNUSTEP_BUILD_DIR)/../../SoObjects/SOGo/SOGo.framework/sogo/
+ RELBUILD_DIR_libSOGoUI = \
+ 	$(GNUSTEP_BUILD_DIR)/../SOGoUI/$(GNUSTEP_OBJ_DIR_NAME)
+ RELBUILD_DIR_libOGoContentStore = \

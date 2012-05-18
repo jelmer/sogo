@@ -7,7 +7,7 @@ Subject: ckeditor-nospellcheck
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/UI/WebServerResources/ckeditor/config.js b/UI/WebServerResources/ckeditor/config.js
-index c54877e..48674e9 100644
+index aa3fac0..e9887fd 100644
 --- a/UI/WebServerResources/ckeditor/config.js
 +++ b/UI/WebServerResources/ckeditor/config.js
 @@ -7,7 +7,7 @@ CKEDITOR.editorConfig = function( config )
