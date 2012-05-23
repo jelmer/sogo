@@ -30,13 +30,12 @@ Copyright: 2007 Andrew Tetlaw & Millstream Web Software
 	   2008 Inverse inc.
 License: Expat
 
-Files: UI/WebServerResources/scriptaculous/*
-Copyright: 2005-2008 Thomas Fuchs <thomas@script.aculo.us>  
+Files: UI/WebServerResources/jquery.js
+Copyright: 2011 John Resig and others
 License: Expat
 
-Files: UI/WebServerResources/scriptaculous/slider.js
-Copyright: 2005-2008 Marty Haught <mghaught@gmail.com>
-	   2005-2008 Thomas Fuchs <thomas@script.aculo.us>
+Files: UI/WebServerResources/jquery-ui.js
+Copyright: 2011 Paul Bakaus and others
 License: Expat
 
 Files: UI/WebServerResources/prototype.js
