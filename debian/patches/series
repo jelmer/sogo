@@ -1,7 +1,6 @@
-0001-ckeditor-nospellcheck.patch
-0002-make-check.patch
-0003-link-everything-correctly.patch
-0004-Read-configuration-from-etc.patch
-0005-Add-support-for-GnuTLS.patch
-0006-Set-SOGoMailSpoolPath-to-var-spool-sogo-by-default.patch
-0007-Put-private-libraries-in-usr-lib-sogo.patch
+0001-make-check.patch
+0002-link-everything-correctly.patch
+0003-Read-configuration-from-etc.patch
+0004-Add-support-for-GnuTLS.patch
+0005-Set-SOGoMailSpoolPath-to-var-spool-sogo-by-default.patch
+0006-Put-private-libraries-in-usr-lib-sogo.patch
