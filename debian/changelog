@@ -1,5 +1,5 @@
-sogo (1.3.14-1) unstable; urgency=low
+sogo (1.3.15a-1) unstable; urgency=low
 
   * Initial release. (Closes: #584073)
 
- -- Jeroen Dekkers <jeroen@dekkers.ch>  Thu, 10 May 2012 23:35:49 +0200
+ -- Jeroen Dekkers <jeroen@dekkers.ch>  Wed, 23 May 2012 19:17:40 +0200
