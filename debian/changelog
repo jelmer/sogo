@@ -1,3 +1,14 @@
+sogo (1.3.15a-2) unstable; urgency=low
+
+  * 0007-GNUstep-1.24-fix.patch:
+    - Fix to cope with changes in GNUstep 1.24. (Closes: #675201)
+  * Fix the cron.daily job:
+    - Delete the directories in a proper way. (Closes: #676161)
+    - Test whether tmpreaper is still installed before executing it.
+      (Closes: #675238)
+
+ -- Jeroen Dekkers <jeroen@dekkers.ch>  Thu, 14 Jun 2012 14:28:31 +0200
+
 sogo (1.3.15a-1) unstable; urgency=low
 
   * Initial release. (Closes: #584073)
