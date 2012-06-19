@@ -16,7 +16,7 @@ set -e
 
 case "$1" in
     purge)
-	deluser --system sogo
+	deluser --system sogo || true
         rm -rf /var/spool/sogo
         rm -rf /var/log/sogo
         rm -rf /var/run/sogo
