@@ -1,6 +1,7 @@
 sogo (1.3.15a-3) UNRELEASED; urgency=low
 
   * Do not assume deluser is available in postrm. (Closes: #678099)
+  * Suggest postgresql or mysql-server. (Closes: #678047)
 
  --
 
