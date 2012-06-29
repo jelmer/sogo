@@ -132,7 +132,7 @@ index 90f7584..31cfdd8 100644
  else
  include $(GNUSTEP_MAKEFILES)/framework.make
 diff --git a/SoObjects/SOGo/GNUmakefile b/SoObjects/SOGo/GNUmakefile
-index c099e3c..2ce8740 100644
+index da52efc..c4b0e25 100644
 --- a/SoObjects/SOGo/GNUmakefile
 +++ b/SoObjects/SOGo/GNUmakefile
 @@ -11,6 +11,8 @@ SOGo_INSTALL_DIR = $(DESTDIR)$(GNUSTEP_$(GNUSTEP_INSTALLATION_DOMAIN)_FRAMEWORKS
@@ -144,7 +144,7 @@ index c099e3c..2ce8740 100644
  SOGo_HEADER_FILES = \
  	SOGoBuild.h \
  	SOGoProductLoader.h		\
-@@ -161,6 +163,7 @@ ADDITIONAL_LDFLAGS += -lmemcached
+@@ -165,6 +167,7 @@ ADDITIONAL_LDFLAGS += -lmemcached
  ifneq ($(FHS_INSTALL_ROOT),)
  GNUSTEP_HEADERS=$(DESTDIR)$(FHS_INSTALL_ROOT)/include
  endif
@@ -179,10 +179,10 @@ index 90cc86a..5cd238c 100644
  	-L../../SOPE/GDLContentStore/$(GNUSTEP_OBJ_DIR)/ -lGDLContentStore \
  	-L../../SOPE/NGCards/$(GNUSTEP_OBJ_DIR)/ -lNGCards \
 diff --git a/Tests/Unit/GNUmakefile b/Tests/Unit/GNUmakefile
-index 01770c1..42df04c 100644
+index c95bd73..df22fe7 100644
 --- a/Tests/Unit/GNUmakefile
 +++ b/Tests/Unit/GNUmakefile
-@@ -32,9 +32,9 @@ $(TEST_TOOL)_CPPFLAGS += \
+@@ -33,9 +33,9 @@ $(TEST_TOOL)_CPPFLAGS += \
  	-Wall -D_GNU_SOURCE -I../../SOPE/ -I../../SoObjects/ -I../../UI/
  
  ADDITIONAL_LIB_DIRS += \
