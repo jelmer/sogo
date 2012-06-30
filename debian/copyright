@@ -15,6 +15,10 @@ Copyright: 2003-2004 Max Berger
 	   2004-2005 OpenGroupware.org
 License: LGPL-2+
 
+Files: SoObjects/SOGo/NSData+Crypto.m
+Copyright: 2001, 2005 Niels Möller 
+License: LGPL-2+
+
 Files: UI/WebServerResources/dtree.*
 Copyright: 2002-2003 Geir Landrö
 License: 
