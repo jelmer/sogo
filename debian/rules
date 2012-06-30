@@ -1,6 +1,7 @@
 #!/usr/bin/make -f
 # -*- makefile -*-
 export DH_VERBOSE=1
+export DEB_BUILD_MAINT_OPTIONS=hardening=+bindnow
 
 %:
 	dh $@ --parallel
@@ -8,6 +9,9 @@ export DH_VERBOSE=1
 override_dh_auto_clean:
 	dh_auto_clean
 	rm -f config.make
+
+override_dh_auto_build:
+	dh_auto_build -- OBJCFLAGS="$(CFLAGS)" CPPFLAGS="$(CPPFLAGS)" LDFLAGS="$(LDFLAGS)" messages=yes
 
 override_dh_auto_configure:
 	./configure
