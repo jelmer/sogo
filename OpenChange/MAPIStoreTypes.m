@@ -96,6 +96,7 @@ NSObjectFromMAPISPropValue (const struct mapi_SPropValue *value)
       result = [NSNumber numberWithUnsignedShort: value->value.i];
       break;
     case PT_LONG:
+    case PT_ERROR:
       result = [NSNumber numberWithUnsignedLong: value->value.l];
       break;
     case PT_I8:
@@ -148,7 +149,6 @@ NSObjectFromMAPISPropValue (const struct mapi_SPropValue *value)
 // #define	PT_ERROR		0xa
 // #define	PT_OBJECT		0xd
 // #define	PT_I8			0x14
-// #define	PT_SVREID		0xFB
 // #define	PT_SRESTRICT		0xFD
 // #define	PT_ACTIONS		0xFE
       result = [NSNull null];
@@ -176,6 +176,7 @@ NSObjectFromSPropValue (const struct SPropValue *value)
       result = [NSNumber numberWithShort: value->value.i];
       break;
     case PT_LONG:
+    case PT_ERROR:
       result = [NSNumber numberWithLong: value->value.l];
       break;
     case PT_I8:
@@ -190,12 +191,12 @@ NSObjectFromSPropValue (const struct SPropValue *value)
     case PT_UNICODE:
       result = (value->value.lpszW
                 ? [NSString stringWithUTF8String: value->value.lpszW]
-                : @"");
+                : (id) @"");
       break;
     case PT_STRING8:
       result = (value->value.lpszA
                 ? [NSString stringWithUTF8String: value->value.lpszA]
-                : @"");
+                : (id) @"");
       break;
     case PT_SYSTIME:
       result = [NSCalendarDate dateFromFileTime: &(value->value.ft)];
@@ -244,7 +245,6 @@ NSObjectFromSPropValue (const struct SPropValue *value)
 // #define	PT_ERROR		0xa
 // #define	PT_OBJECT		0xd
 // #define	PT_I8			0x14
-// #define	PT_SVREID		0xFB
 // #define	PT_SRESTRICT		0xFD
 // #define	PT_ACTIONS		0xFE
       result = [NSNull null];
@@ -266,6 +266,69 @@ NSObjectFromValuePointer (enum MAPITAGS propTag, const void *data)
     result = NSObjectFromSPropValue (&sPropValue);
   else
     result = nil;
+
+  return result;
+}
+
+static uint64_t
+_reverseCN (uint64_t cn)
+{
+  return ((cn & UINT64_C (0x00000000000000ff)) << 56
+          | (cn & UINT64_C (0x000000000000ff00)) << 40
+          | (cn & UINT64_C (0x0000000000ff0000)) << 24
+          | (cn & UINT64_C (0x00000000ff000000)) << 8
+          | (cn & UINT64_C (0x000000ff00000000)) >> 8
+          | (cn & UINT64_C (0x0000ff0000000000)) >> 24
+          | (cn & UINT64_C (0x00ff000000000000)) >> 40
+          | (cn & UINT64_C (0xff00000000000000)) >> 56);
+}
+
+NSComparisonResult
+MAPICNCompare (uint64_t cn1, uint64_t cn2, void *unused)
+{
+  NSComparisonResult result;
+
+  if (cn1 == cn2)
+    result = NSOrderedSame;
+  else if (_reverseCN (cn1) < _reverseCN (cn2))
+    result = NSOrderedAscending;
+  else
+    result = NSOrderedDescending;
+
+  return result;
+}
+
+NSComparisonResult MAPIChangeKeyGUIDCompare (NSData *ck1, NSData *ck2, void *unused)
+{
+  NSUInteger count;
+  const unsigned char *ptr1, *ptr2;
+  NSComparisonResult result = NSOrderedSame;
+
+  if ([ck1 length] < 16)
+    {
+      NSLog (@"ck1 has a length < 16");
+      abort ();
+    }
+  if ([ck2 length] < 16)
+    {
+      NSLog (@"ck2 has a length < 16");
+      abort ();
+    }
+
+  ptr1 = [ck1 bytes];
+  ptr2 = [ck2 bytes];
+  for (count = 0; result == NSOrderedSame && count < 16; count++)
+    {
+      if (*ptr1 < *ptr2)
+        result = NSOrderedAscending;
+      else if (*ptr1 > *ptr2)
+        result = NSOrderedDescending;
+      else
+        {
+          ptr1++;
+          ptr2++;
+        }
+    }
 
   return result;
 }

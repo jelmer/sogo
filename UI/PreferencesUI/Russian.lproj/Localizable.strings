@@ -30,6 +30,7 @@
 "Disable auto reply on" = "Запрет автоответа включен";
 "Please specify your message and your email addresses for which you want to enable auto reply."
 = "Пожалуйста, укажите Ваше сообщение и адреса электронной почты для которых Вы хотите включить автоматический ответ.";
+"Your vacation message must not end with a single dot on a line." = "Ваше сообщение о верменном отсутсвии не должно оканчиваться строкой с одиночной точкой.";
 "End date of your auto reply must be in the future."
 = "Дата завершения вашего автоответа должна быть в будущем.";
 
@@ -78,6 +79,9 @@
 "longDateFmt_5" = "%A, %d %B, %Y";
 "longDateFmt_6" = "%d %B, %Y";
 "longDateFmt_7" = "";
+"longDateFmt_8" = "";
+"longDateFmt_9" = "";
+"longDateFmt_10" = "";
 
 "timeFmt_0" = "%H:%M";
 "timeFmt_1" = "%H.%M";
@@ -170,6 +174,13 @@
 "Confirmation:" = "Повтор нового пароля:";
 "Change" = "Изменить";
 
+/* Event+task classifications */
+"Default events classification :" = "Default events classification :";
+"Default tasks classification :" = "Default tasks classification :";
+"PUBLIC_item" = "Public";
+"CONFIDENTIAL_item" = "Confidential";
+"PRIVATE_item" = "Private";
+
 /* Event+task categories */
 "category_none" = "None";
 "calendar_category_labels" = "Годовщина,День рождения,Деловые,Звонки,Клиенты,Конкуренты,Потребители,Избранное,Вслед за,Подарки,Праздники,Идеи,Встречи,Проблемы,Разное,Персональное,Проекты,Государственный праздник,Статус,Поставщики,Путешествия,Отпуск";
@@ -185,7 +196,7 @@
 "choose" = "Выбрать ...";
 "Catalan" = "Català";
 "Czech" = "Česky";
-"DanishDenmark" = "Dansk (Danmark)";
+"Danish" = "Dansk (Danmark)";
 "Dutch" = "Nederlands";
 "English" = "English";
 "French" = "Français";
@@ -201,18 +212,6 @@
 "Swedish" = "Svenska";
 "Ukrainian" = "Українська";
 "Welsh" = "Cymraeg";
-
-/* Return receipts */
-"When I receive a request for a return receipt:" = "Когда я получаю запрос об уведомлении о доставке:";
-"Never send a return receipt" = "Никогда не посылать уведомления о доставке";
-"Allow return receipts for some messages" = "Разрешить уведомления о доставке для некоторых сообщений";
-"If I'm not in the To or Cc of the message:" = "Если я не в поле Кому: или Копия: для этого сообщения:";
-"If the sender is outside my domain:" = "Если отправитель вне моего домена:";
-"In all other cases:" = "Во всех остальных случаях:";
-
-"Never send" = "Никогда не посылать";
-"Always send" = "Всегда посылать";
-"Ask me" = "Спросить меня";
 
 /* Return receipts */
 "When I receive a request for a return receipt:" = "Когда я получаю запрос об уведомлении о доставке:";
@@ -291,5 +290,3 @@
 "Unhandled error response" = "Unhandled error response";
 "Password change is not supported." = "Изменение пароля не поддерживается";
 "Unhandled HTTP error code: %{0}" = "Unhandled HTTP error code: %{0}";
-"New password:" = "Новый пароль:";
-"Confirmation:" = "Повтор нового пароля:";

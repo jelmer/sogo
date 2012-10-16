@@ -37,6 +37,19 @@
 
 "Sorry, the user rights can not be configured for that object." = "Désolé, les droits d'accès ne peuvent être configurés pour cet objet.";
 
+"Any user with an account on this system will be able to access your mailbox \"%{0}\". Are you certain you trust them all?"
+     = "Tout utilisateur ayant un compte sur ce système aura accès à votre boîte «%{0}». Voulez-vous vraiment faire confiance à tous ces utilisateurs?";
+"Any user with an account on this system will be able to access your calendar \"%{0}\". Are you certain you trust them all?" 
+     = "Tout utilisateur ayant un compte sur ce système aura accès à votre calendrier «%{0}». Voulez-vous vraiment faire confiance à tous ces utilisateurs?";
+"Potentially anyone on the Internet will be able to access your calendar \"%{0}\", even if they do not have an account on this system. Is this information suitable for the public Internet?"
+     = "N'importe quel internaute aura potentiellement accès à votre calendrier «%{0}», même s'il n'a pas de compte sur ce système. Est-ce que le contenu de votre calendrier est adapté à une telle visibilité?";
+"Any user with an account on this system will be able to access your address book \"%{0}\". Are you certain you trust them all?"
+     = "Tout utilisateur ayant un compte sur ce système aura accès à votre carnet d'adresses «%{0}». Voulez-vous vraiment faire confiance à tous ces utilisateurs?";
+"Potentially anyone on the Internet will be able to access your address book \"%{0}\", even if they do not have an account on this system. Is this information suitable for the public Internet?"
+     = "N'importe quel internaute aura potentiellement accès à votre carnet d'adresses «%{0}», même s'il n'a pas de compte sur ce système. Est-ce que le contenu de votre calendrier est adapté à une telle visibilité?";
+"Give Access" = "Appliquer les droits";
+"Keep Private" = "Garder privé";
+
 /* generic.js */
 "Unable to subscribe to that folder!"
 	= "Impossible de s'abonner à ce dossier.";
@@ -65,6 +78,15 @@
 "delegate is organizer" = "L'adresse spécifiée correspond à l'organisateur. Veuillez entrer un autre délégué.";
 "delegate is a participant" = "Le délégué est déjà un participant.";
 "delegate is a group" = "L'adresse spécifiée correspond à un groupe. Vous ne pouvez déléguer qu'à une personne.";
+
+"Snooze for " = "Rappel dans ";
+"5 minutes" = "5 minutes";
+"10 minutes" = "10 minutes";
+"15 minutes" = "15 minutes";
+"30 minutes" = "30 minutes";
+"45 minutes" = "45 minutes";
+"1 hour" = "1 heure";
+
 
 /* common buttons */
 "OK" = "OK";

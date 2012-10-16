@@ -22,6 +22,7 @@
 
 #import <Foundation/NSCalendarDate.h>
 #import <Foundation/NSDictionary.h>
+#import <Foundation/NSException.h>
 #import <NGExtensions/NSObject+Logs.h>
 #import <EOControl/EOQualifier.h>
 #import <EOControl/EOFetchSpecification.h>
@@ -29,9 +30,13 @@
 #import <GDLContentStore/GCSFolder.h>
 #import <SOGo/NSArray+Utilities.h>
 #import <SOGo/SOGoGCSFolder.h>
+#import <SOGo/SOGoParentFolder.h>
+#import <SOGo/SOGoPermissions.h>
+#import <SOGo/SOGoUser.h>
 
-#import "MAPIStoreContext.h"
+#import "MAPIStoreGCSBaseContext.h"
 #import "MAPIStoreTypes.h"
+#import "MAPIStoreUserContext.h"
 #import "NSData+MAPIStore.h"
 #import "NSDate+MAPIStore.h"
 #import "NSString+MAPIStore.h"
@@ -41,21 +46,15 @@
 
 #undef DEBUG
 #include <mapistore/mapistore.h>
+#include <mapistore/mapistore_errors.h>
+
+static Class NSNumberK;
 
 @implementation MAPIStoreGCSFolder
 
-- (id) initWithURL: (NSURL *) newURL
-         inContext: (MAPIStoreContext *) newContext
++ (void) initialize
 {
-  if ((self = [super initWithURL: newURL
-                       inContext: newContext]))
-    {
-      ASSIGN (versionsMessage,
-              [SOGoMAPIFSMessage objectWithName: @"versions.plist"
-				 inContainer: propsFolder]);
-    }
-
-  return self;
+  NSNumberK = [NSNumber class];
 }
 
 - (id) initWithSOGoObject: (id) newSOGoObject
@@ -63,26 +62,120 @@
 {
   if ((self = [super initWithSOGoObject: newSOGoObject inContainer: newContainer]))
     {
-      ASSIGN (versionsMessage,
-              [SOGoMAPIFSMessage objectWithName: @"versions.plist"
-                                    inContainer: propsFolder]);
+      activeUserRoles = nil;
     }
 
   return self;
 }
 
+- (void) setupVersionsMessage
+{
+  ASSIGN (versionsMessage,
+          [SOGoMAPIFSMessage objectWithName: @"versions.plist"
+                                inContainer: propsFolder]);
+}
+
 - (void) dealloc
 {
   [versionsMessage release];
+  [activeUserRoles release];
+  [componentQualifier release];
   [super dealloc];
+}
+
+- (int) deleteFolder
+{
+  int rc;
+  NSException *error;
+  NSString *name;
+
+  name = [self nameInContainer];
+  if ([name isEqualToString: @"personal"])
+    rc = MAPISTORE_ERR_DENIED;
+  else
+    {
+      [[sogoObject container] removeSubFolder: name];
+      error = [(SOGoGCSFolder *) sogoObject delete];
+      if (error)
+        rc = MAPISTORE_ERROR;
+      else
+        {
+          if (![versionsMessage delete])
+            rc = MAPISTORE_SUCCESS;
+          else
+            rc = MAPISTORE_ERROR;
+        }
+    }
+
+  return (rc == MAPISTORE_SUCCESS) ? [super deleteFolder] : rc;
+}
+
+- (void) setDisplayName: (NSString *) newDisplayName
+{
+  NSString *suffix, *fullSuffix;
+  Class cClass;
+
+  cClass = [(MAPIStoreGCSBaseContext *) [self context] class];
+
+  /* if a suffix exists, we strip it from the final name */
+  suffix = [cClass folderNameSuffix];
+  if ([suffix length] > 0)
+    {
+      fullSuffix = [NSString stringWithFormat: @"(%@)", suffix];
+      if ([newDisplayName hasSuffix: fullSuffix])
+        {
+          newDisplayName = [newDisplayName substringToIndex:
+                                             [newDisplayName length]
+                                           - [fullSuffix length]];
+          newDisplayName = [newDisplayName stringByTrimmingSpaces];
+        }
+    }
+
+  if (![[sogoObject displayName] isEqualToString: newDisplayName])
+    [sogoObject renameTo: newDisplayName];
+}
+
+- (int) getPidTagDisplayName: (void **) data
+                inMemCtx: (TALLOC_CTX *) memCtx
+{
+  NSString *displayName;
+  Class cClass;
+
+  cClass = [(MAPIStoreGCSBaseContext *) [self context] class];
+  displayName = [cClass getFolderDisplayName: [sogoObject displayName]];
+  *data = [displayName asUnicodeInMemCtx: memCtx];
+
+  return MAPISTORE_SUCCESS;
+}
+
+- (void) addProperties: (NSDictionary *) newProperties
+{
+  NSString *newDisplayName;
+  NSMutableDictionary *propsCopy;
+  NSNumber *key;
+
+  key = MAPIPropertyKey (PR_DISPLAY_NAME_UNICODE);
+  newDisplayName = [newProperties objectForKey: key];
+  if (newDisplayName)
+    {
+      [self setDisplayName: newDisplayName];
+      propsCopy = [newProperties mutableCopy];
+      [propsCopy removeObjectForKey: key];
+      [propsCopy autorelease];
+      newProperties = propsCopy;
+    }
+
+  [super addProperties: newProperties];
 }
 
 - (NSArray *) messageKeysMatchingQualifier: (EOQualifier *) qualifier
                           andSortOrderings: (NSArray *) sortOrderings
 {
   static NSArray *fields = nil;
+  SOGoUser *ownerUser;
   NSArray *records;
-  EOQualifier *componentQualifier, *fetchQualifier;
+  NSMutableArray *qualifierArray;
+  EOQualifier *fetchQualifier, *aclQualifier;
   GCSFolder *ocsFolder;
   EOFetchSpecification *fs;
   NSArray *keys;
@@ -91,24 +184,28 @@
     fields = [[NSArray alloc]
 	       initWithObjects: @"c_name", @"c_version", nil];
 
-  componentQualifier = [self componentQualifier];
-  if (qualifier)
+  qualifierArray = [NSMutableArray new];
+  ownerUser = [[self userContext] sogoUser];
+  if (![[context activeUser] isEqual: ownerUser])
     {
-      fetchQualifier = [[EOAndQualifier alloc]
-                         initWithQualifiers:
-                           componentQualifier,
-                         qualifier,
-                         nil];
-      [fetchQualifier autorelease];
+      aclQualifier = [self aclQualifier];
+      if (aclQualifier)
+        [qualifierArray addObject: aclQualifier];
     }
-  else
-    fetchQualifier = componentQualifier;
+  [qualifierArray addObject: [self componentQualifier]];
+  if (qualifier)
+    [qualifierArray addObject: qualifier];
+
+  fetchQualifier = [[EOAndQualifier alloc]
+                     initWithQualifierArray: qualifierArray];
 
   ocsFolder = [sogoObject ocsFolder];
   fs = [EOFetchSpecification
          fetchSpecificationWithEntityName: [ocsFolder folderName]
                                 qualifier: fetchQualifier
                             sortOrderings: sortOrderings];
+  [fetchQualifier release];
+  [qualifierArray release];
   records = [ocsFolder fetchFields: fields fetchSpecification: fs];
   keys = [records objectsForKey: @"c_name"
                  notFoundMarker: nil];
@@ -118,17 +215,17 @@
 
 - (NSDate *) lastMessageModificationTime
 {
+  NSDate *value;
   NSNumber *ti;
-  NSDate *value = nil;
+
+  [self synchroniseCache];
 
   ti = [[versionsMessage properties]
-         objectForKey: @"SyncLastSynchronisationDate"];
+         objectForKey: @"SyncLastModificationDate"];
   if (ti)
     value = [NSDate dateWithTimeIntervalSince1970: [ti doubleValue]];
   else
-    value = [NSDate date];
-
-  [self logWithFormat: @"lastMessageModificationTime: %@", value];
+    value = nil;
 
   return value;
 }
@@ -155,7 +252,7 @@
     ...
   };
   VersionMapping = {
-    Version = MessageKey;
+    Version = last-modified;
     ...
   }
 }
@@ -194,12 +291,41 @@
   [changeList setObject: globCnt forKey: guid];
 }
 
+- (EOQualifier *) componentQualifier
+{
+  if (!componentQualifier)
+    componentQualifier
+      = [[EOKeyValueQualifier alloc] initWithKey: @"c_component"
+				operatorSelector: EOQualifierOperatorEqual
+					   value: [self component]];
+
+  return componentQualifier;
+}
+
+- (EOQualifier *) contentComponentQualifier
+{
+  EOQualifier *contentComponentQualifier;
+  NSString *likeString;
+  
+  likeString = [NSString stringWithFormat: @"%%BEGIN:%@%%",
+                         [[self component] uppercaseString]];
+  contentComponentQualifier = [[EOKeyValueQualifier alloc]
+                                initWithKey: @"c_content"
+                           operatorSelector: EOQualifierOperatorLike
+                                      value: likeString];
+  [contentComponentQualifier autorelease];
+
+  return contentComponentQualifier;
+}
+
 - (BOOL) synchroniseCache
 {
   BOOL rc = YES, foundChange = NO;
   uint64_t newChangeNum;
   NSData *changeKey;
-  NSNumber *ti, *changeNumber, *lastModificationDate, *cName, *cVersion, *cLastModified;
+  NSString *cName;
+  NSNumber *ti, *changeNumber, *lastModificationDate, *cVersion,
+    *cLastModified, *cDeleted;
   EOFetchSpecification *fs;
   EOQualifier *searchQualifier, *fetchQualifier;
   NSUInteger count, max;
@@ -214,7 +340,7 @@
   if (!fields)
     fields = [[NSArray alloc]
 	       initWithObjects: @"c_name", @"c_version", @"c_lastmodified",
-               nil];
+               @"c_deleted", nil];
 
   if (!sortOrdering)
     {
@@ -223,26 +349,7 @@
       [sortOrdering retain];
     }
 
-  now = [NSCalendarDate date];
-
-  currentProperties = [[versionsMessage properties] mutableCopy];
-  if (!currentProperties)
-    currentProperties = [NSMutableDictionary new];
-  [currentProperties autorelease];
-  messages = [currentProperties objectForKey: @"Messages"];
-  if (!messages)
-    {
-      messages = [NSMutableDictionary new];
-      [currentProperties setObject: messages forKey: @"Messages"];
-      [messages release];
-    }
-  mapping = [currentProperties objectForKey: @"VersionMapping"];
-  if (!mapping)
-    {
-      mapping = [NSMutableDictionary new];
-      [currentProperties setObject: mapping forKey: @"VersionMapping"];
-      [mapping release];
-    }
+  currentProperties = [versionsMessage properties];
 
   lastModificationDate = [currentProperties objectForKey: @"SyncLastModificationDate"];
   if (lastModificationDate)
@@ -252,8 +359,9 @@
                            operatorSelector: EOQualifierOperatorGreaterThanOrEqualTo
                                       value: lastModificationDate];
       fetchQualifier = [[EOAndQualifier alloc]
-                         initWithQualifiers:
-                           searchQualifier, [self componentQualifier], nil];
+                         initWithQualifiers: searchQualifier,
+                         [self contentComponentQualifier],
+                         nil];
       [fetchQualifier autorelease];
       [searchQualifier release];
     }
@@ -265,17 +373,38 @@
              fetchSpecificationWithEntityName: [ocsFolder folderName]
                                     qualifier: fetchQualifier
                                 sortOrderings: [NSArray arrayWithObject: sortOrdering]];
-  fetchResults = [ocsFolder fetchFields: fields fetchSpecification: fs];
+  fetchResults = [ocsFolder fetchFields: fields
+                     fetchSpecification: fs
+                          ignoreDeleted: NO];
   max = [fetchResults count];
   if (max > 0)
     {
+      messages = [currentProperties objectForKey: @"Messages"];
+      if (!messages)
+        {
+          messages = [NSMutableDictionary new];
+          [currentProperties setObject: messages forKey: @"Messages"];
+          [messages release];
+        }
+      mapping = [currentProperties objectForKey: @"VersionMapping"];
+      if (!mapping)
+        {
+          mapping = [NSMutableDictionary new];
+          [currentProperties setObject: mapping forKey: @"VersionMapping"];
+          [mapping release];
+        }
+
       ldb_transaction_start([[self context] connectionInfo]->oc_ctx);
 
       for (count = 0; count < max; count++)
         {
           result = [fetchResults objectAtIndex: count];
           cName = [result objectForKey: @"c_name"];
-          cVersion = [result objectForKey: @"c_version"];
+          cDeleted = [result objectForKey: @"c_deleted"];
+          if ([cDeleted isKindOfClass: NSNumberK] && [cDeleted intValue])
+            cVersion = [NSNumber numberWithInt: -1];
+          else
+            cVersion = [result objectForKey: @"c_version"];
           cLastModified = [result objectForKey: @"c_lastmodified"];
 
           messageEntry = [messages objectForKey: cName];
@@ -285,9 +414,12 @@
               [messages setObject: messageEntry forKey: cName];
               [messageEntry release];
             }
+
           if (![[messageEntry objectForKey: @"c_version"]
                  isEqual: cVersion])
             {
+              [sogoObject removeChildRecordWithName: cName];
+
               foundChange = YES;
 
               newChangeNum = [[self context] getNewChangeNumber];
@@ -313,6 +445,7 @@
       
       if (foundChange)
         {
+          now = [NSCalendarDate date];
           ti = [NSNumber numberWithDouble: [now timeIntervalSince1970]];
           [currentProperties setObject: ti
                                 forKey: @"SyncLastSynchronisationDate"];
@@ -324,6 +457,15 @@
     }
 
   return rc;
+}
+
+- (void) updateVersionsForMessageWithKey: (NSString *) messageKey
+                           withChangeKey: (NSData *) newChangeKey
+{
+  [self synchroniseCache];
+
+  if (newChangeKey)
+    [self setChangeKey: newChangeKey forMessageWithKey: messageKey];
 }
  
 - (NSNumber *) lastModifiedFromMessageChangeNumber: (NSNumber *) changeNum
@@ -358,25 +500,15 @@
   messages = [[versionsMessage properties] objectForKey: @"Messages"];
   messageEntry = [messages objectForKey: messageKey];
   if (!messageEntry)
-    abort ();
+    {
+      [self synchroniseCache];
+      messageEntry = [messages objectForKey: messageKey];
+      if (!messageEntry)
+        abort ();
+    }
   [self _setChangeKey: changeKey forMessageEntry: messageEntry];
   
   [versionsMessage save];
-}
-
-- (NSData *) _dataFromChangeKeyGUID: (NSString *) guidString
-                             andCnt: (NSData *) globCnt
-{
-  NSMutableData *changeKey;
-  struct GUID guid;
-
-  changeKey = [NSMutableData dataWithCapacity: 16 + [globCnt length]];
-
-  [guidString extractGUID: &guid];
-  [changeKey appendData: [NSData dataWithGUID: &guid]];
-  [changeKey appendData: globCnt];
-
-  return changeKey;
 }
 
 - (NSData *) changeKeyForMessageWithKey: (NSString *) messageKey
@@ -392,7 +524,7 @@
     {
       guid = [changeKeyDict objectForKey: @"GUID"];
       globCnt = [changeKeyDict objectForKey: @"LocalId"];
-      changeKey = [self _dataFromChangeKeyGUID: guid andCnt: globCnt];
+      changeKey = [NSData dataWithChangeKeyGUID: guid andCnt: globCnt];
     }
 
   return changeKey;
@@ -400,9 +532,10 @@
 
 - (NSData *) predecessorChangeListForMessageWithKey: (NSString *) messageKey
 {
-  NSMutableData *changeKeys = nil;
+  NSMutableData *list = nil;
   NSDictionary *messages, *changeListDict;
   NSArray *keys;
+  NSMutableArray *changeKeys;
   NSUInteger count, max;
   NSData *changeKey;
   NSString *guid;
@@ -413,21 +546,30 @@
                      objectForKey: @"PredecessorChangeList"];
   if (changeListDict)
     {
-      changeKeys = [NSMutableData data];
       keys = [changeListDict allKeys];
       max = [keys count];
 
+      changeKeys = [NSMutableArray arrayWithCapacity: max];
       for (count = 0; count < max; count++)
         {
           guid = [keys objectAtIndex: count];
           globCnt = [changeListDict objectForKey: guid];
-          changeKey = [self _dataFromChangeKeyGUID: guid andCnt: globCnt];
-          [changeKeys appendUInt8: [changeKey length]];
-          [changeKeys appendData: changeKey];
+          changeKey = [NSData dataWithChangeKeyGUID: guid andCnt: globCnt];
+          [changeKeys addObject: changeKey];
+        }
+      [changeKeys sortUsingFunction: MAPIChangeKeyGUIDCompare
+                            context: nil];
+
+      list = [NSMutableData data];
+      for (count = 0; count < max; count++)
+        {
+          changeKey = [changeKeys objectAtIndex: count];
+          [list appendUInt8: [changeKey length]];
+          [list appendData: changeKey];
         }
     }
 
-  return changeKeys;
+  return list;
 }
 
 - (NSArray *) getDeletedKeysFromChangeNumber: (uint64_t) changeNum
@@ -437,9 +579,9 @@
   NSArray *deletedKeys, *deletedCNames, *records;
   NSNumber *changeNumNbr, *lastModified;
   NSString *cName;
-  NSDictionary *versionProperties;
-  NSMutableDictionary *messages, *mapping;
-  uint64_t newChangeNum = 0;
+  NSDictionary *versionProperties, *messageEntry;
+  NSMutableDictionary *messages;
+  uint64_t maxChangeNum = changeNum, currentChangeNum;
   EOAndQualifier *fetchQualifier;
   EOKeyValueQualifier *cDeletedQualifier, *cLastModifiedQualifier;
   EOFetchSpecification *fs;
@@ -484,28 +626,28 @@
                              ignoreDeleted: NO];
           deletedCNames = [records objectsForKey: @"c_name" notFoundMarker: nil];
           max = [deletedCNames count];
-          if (max > 0)
+          for (count = 0; count < max; count++)
             {
-              mapping = [versionProperties objectForKey: @"VersionsMapping"];
-              for (count = 0; count < max; count++)
+              cName = [deletedCNames objectAtIndex: count];
+              [sogoObject removeChildRecordWithName: cName];
+              messageEntry = [messages objectForKey: cName];
+              if (messageEntry)
                 {
-                  cName = [deletedCNames objectAtIndex: count];
-                  if ([messages objectForKey: cName])
+                  currentChangeNum
+                    = [[messageEntry objectForKey: @"version"]
+                        unsignedLongLongValue];
+                  if (MAPICNCompare (changeNum, currentChangeNum, NULL)
+                      == NSOrderedAscending)
                     {
-                      [messages removeObjectForKey: cName];
                       [(NSMutableArray *) deletedKeys addObject: cName];
-                      newChangeNum = [[self context] getNewChangeNumber];
+                      if (MAPICNCompare (maxChangeNum, currentChangeNum, NULL)
+                          == NSOrderedAscending)
+                        maxChangeNum = currentChangeNum;
                     }
                 }
-              if (newChangeNum)
-                {
-                  changeNumNbr
-                    = [NSNumber numberWithUnsignedLongLong: newChangeNum];
-                  [mapping setObject: lastModified forKey: changeNumNbr];
-                  *cnNbr = changeNumNbr;
-                  [versionsMessage save];
-                }
             }
+          if (maxChangeNum != changeNum)
+            *cnNbr = [NSNumber numberWithUnsignedLongLong: maxChangeNum];
         }
     }
   else
@@ -516,9 +658,41 @@
   return deletedKeys;
 }
 
+- (NSArray *) activeUserRoles
+{
+  SOGoUser *activeUser;
+  WOContext *woContext;
+
+  if (!activeUserRoles)
+    {
+      activeUser = [[self context] activeUser];
+      woContext = [[self userContext] woContext];
+      activeUserRoles = [activeUser rolesForObject: sogoObject
+                                         inContext: woContext];
+      [activeUserRoles retain];
+    }
+
+  return activeUserRoles;
+}
+
+- (BOOL) subscriberCanCreateMessages
+{
+  return [[self activeUserRoles] containsObject: SOGoRole_ObjectCreator];
+}
+
+- (BOOL) subscriberCanDeleteMessages
+{
+  return [[self activeUserRoles] containsObject: SOGoRole_ObjectEraser];
+}
+
 /* subclasses */
 
-- (EOQualifier *) componentQualifier
+- (EOQualifier *) aclQualifier
+{
+  return nil;
+}
+
+- (NSString *) component
 {
   [self subclassResponsibility: _cmd];
 

@@ -131,7 +131,8 @@
 
 /* acls */
 
-"User rights for:" = "User rights for:";
+"Access rights to" = "Access rights to";
+"For user" = "For user";
 
 "Any Authenticated User" = "Any Authenticated User";
 "Public Access" = "Public Access";
@@ -159,7 +160,6 @@
 
 /* Button Titles */
 
-"New Calendar..." = "New Calendar...";
 "Subscribe to a Calendar..." = "Subscribe to a Calendar...";
 "Remove the selected Calendar" = "Remove the selected Calendar";
 

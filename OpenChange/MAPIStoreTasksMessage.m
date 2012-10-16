@@ -22,8 +22,10 @@
  */
 
 #import <Foundation/NSArray.h>
+#import <Foundation/NSCalendarDate.h>
 #import <Foundation/NSDictionary.h>
 #import <Foundation/NSString.h>
+#import <Foundation/NSTimeZone.h>
 #import <NGObjWeb/WOContext+SoObjects.h>
 #import <NGExtensions/NSObject+Logs.h>
 #import <NGCards/iCalCalendar.h>
@@ -31,10 +33,13 @@
 #import <NGCards/iCalTimeZone.h>
 #import <NGCards/iCalToDo.h>
 #import <NGCards/iCalPerson.h>
+#import <SOGo/SOGoPermissions.h>
 #import <SOGo/SOGoUser.h>
 #import <SOGo/SOGoUserDefaults.h>
+#import <Appointments/iCalEntityObject+SOGo.h>
 #import <Appointments/SOGoTaskObject.h>
 
+#import "MAPIStoreContext.h"
 #import "MAPIStoreTasksFolder.h"
 #import "MAPIStoreTypes.h"
 #import "NSDate+MAPIStore.h"
@@ -61,8 +66,8 @@
 
 @implementation MAPIStoreTasksMessage
 
-- (int) getPrIconIndex: (void **) data // TODO
-              inMemCtx: (TALLOC_CTX *) memCtx
+- (int) getPidTagIconIndex: (void **) data // TODO
+                  inMemCtx: (TALLOC_CTX *) memCtx
 {
   /* see http://msdn.microsoft.com/en-us/library/cc815472.aspx */
   // Unassigned recurring task 0x00000501
@@ -76,32 +81,32 @@
   return MAPISTORE_SUCCESS;
 }
 
-- (int) getPrMessageClass: (void **) data
-                 inMemCtx: (TALLOC_CTX *) memCtx
+- (int) getPidTagMessageClass: (void **) data
+                     inMemCtx: (TALLOC_CTX *) memCtx
 {
   *data = talloc_strdup(memCtx, "IPM.Task");
 
   return MAPISTORE_SUCCESS;
 }
 
-- (int) getPrSubject: (void **) data // SUMMARY
-            inMemCtx: (TALLOC_CTX *) memCtx
+- (int) getPidTagSubject: (void **) data // SUMMARY
+                inMemCtx: (TALLOC_CTX *) memCtx
 {
   iCalToDo *task;
 
-  task = [sogoObject component: NO secure: NO];
+  task = [sogoObject component: NO secure: YES];
   *data = [[task summary] asUnicodeInMemCtx: memCtx];
 
   return MAPISTORE_SUCCESS;
 }
 
-- (int) getPrImportance: (void **) data
-               inMemCtx: (TALLOC_CTX *) memCtx
+- (int) getPidTagImportance: (void **) data
+                   inMemCtx: (TALLOC_CTX *) memCtx
 {
   uint32_t v;
   iCalToDo *task;
 
-  task = [sogoObject component: NO secure: NO];
+  task = [sogoObject component: NO secure: YES];
   if ([[task priority] isEqualToString: @"9"])
     v = 0x0;
   else if ([[task priority] isEqualToString: @"1"])
@@ -119,7 +124,7 @@
 {
   iCalToDo *task;
 
-  task = [sogoObject component: NO secure: NO];
+  task = [sogoObject component: NO secure: YES];
   *data = MAPIBoolValue (memCtx,
                          [[task status] isEqualToString: @"COMPLETED"]);
 
@@ -132,7 +137,7 @@
   double doubleValue;
   iCalToDo *task;
 
-  task = [sogoObject component: NO secure: NO];
+  task = [sogoObject component: NO secure: YES];
 
   doubleValue = ((double) [[task percentComplete] intValue] / 100);
   *data = MAPIDoubleValue (memCtx, doubleValue);
@@ -147,7 +152,7 @@
   NSCalendarDate *dateValue;
   iCalToDo *task;
 
-  task = [sogoObject component: NO secure: NO];
+  task = [sogoObject component: NO secure: YES];
 
   dateValue = [task completed];
   if (dateValue)
@@ -196,8 +201,8 @@
   return [self getLongZero: data inMemCtx: memCtx];
 }
 
-- (int) getPrHasattach: (void **) data
-              inMemCtx: (TALLOC_CTX *) memCtx
+- (int) getPidTagHasAttachments: (void **) data
+                       inMemCtx: (TALLOC_CTX *) memCtx
 {
   return [self getNo: data inMemCtx: memCtx];
 }
@@ -209,7 +214,7 @@
   NSCalendarDate *dateValue;
   iCalToDo *task;
 
-  task = [sogoObject component: NO secure: NO];
+  task = [sogoObject component: NO secure: YES];
   dateValue = [task due];
   if (dateValue)
     *data = [dateValue asFileTimeInMemCtx: memCtx];
@@ -226,7 +231,7 @@
   NSCalendarDate *dateValue;
   iCalToDo *task;
 
-  task = [sogoObject component: NO secure: NO];
+  task = [sogoObject component: NO secure: YES];
   dateValue = [task startDate];
   if (dateValue)
     *data = [dateValue asFileTimeInMemCtx: memCtx];
@@ -237,22 +242,22 @@
 }
 
 
-- (int) getPrMessageDeliveryTime: (void **) data
-                        inMemCtx: (TALLOC_CTX *) memCtx
+- (int) getPidTagMessageDeliveryTime: (void **) data
+                            inMemCtx: (TALLOC_CTX *) memCtx
 {
-  return [self getPrLastModificationTime: data inMemCtx: memCtx];
+  return [self getPidTagLastModificationTime: data inMemCtx: memCtx];
 }
 
 - (int) getClientSubmitTime: (void **) data
                    inMemCtx: (TALLOC_CTX *) memCtx
 {
-  return [self getPrLastModificationTime: data inMemCtx: memCtx];
+  return [self getPidTagLastModificationTime: data inMemCtx: memCtx];
 }
 
 - (int) getLocalCommitTime: (void **) data
                   inMemCtx: (TALLOC_CTX *) memCtx
 {
-  return [self getPrLastModificationTime: data inMemCtx: memCtx];
+  return [self getPidTagLastModificationTime: data inMemCtx: memCtx];
 }
 
 - (int) getPidLidTaskStatus: (void **) data // status
@@ -262,7 +267,7 @@
   uint32_t longValue;
   iCalToDo *task;
 
-  task = [sogoObject component: NO secure: NO];
+  task = [sogoObject component: NO secure: YES];
   status = [task status];
   if (![status length]
       || [status isEqualToString: @"NEEDS-ACTION"])
@@ -296,18 +301,37 @@
   return [self getLongZero: data inMemCtx: memCtx];
 }
 
+- (BOOL) subscriberCanReadMessage
+{
+  return ([[self activeUserRoles]
+            containsObject: SOGoCalendarRole_ComponentViewer]
+          || [self subscriberCanModifyMessage]);
+}
+
+- (BOOL) subscriberCanModifyMessage
+{
+  BOOL rc;
+  NSArray *roles = [self activeUserRoles];
+
+  if (isNew)
+    rc = [roles containsObject: SOGoRole_ObjectCreator];
+  else
+    rc = ([roles containsObject: SOGoCalendarRole_ComponentModifier]
+          || [roles containsObject: SOGoCalendarRole_ComponentResponder]);
+
+  return rc;
+}
+
 - (void) save
 {
   iCalCalendar *vCalendar;
   iCalToDo *vToDo;
   id value;
-  SOGoUserDefaults *ud;
-  iCalTimeZone *tz;
   iCalDateTime *date;
-  NSString *owner, *status, *priority;
+  NSString *status, *priority;
   NSCalendarDate *now;
+  NSInteger tzOffset;
 
-  owner = [sogoObject ownerInContext: nil];
   vToDo = [sogoObject component: YES secure: NO];
   vCalendar = [vToDo parent];
   [vCalendar setProdID: @"-//Inverse inc.//OpenChange+SOGo//EN"];
@@ -342,17 +366,16 @@
       [vToDo setTimeStampAsDate: value];
     }
 
-  ud = [[SOGoUser userWithLogin: owner] userDefaults];
-  tz = [iCalTimeZone timeZoneForName: [ud timeZoneName]];
-  [vCalendar addTimeZone: tz];
-
   // start
   value = [properties objectForKey: MAPIPropertyKey (PidLidTaskStartDate)];
   if (value)
     {
       date = (iCalDateTime *) [vToDo uniqueChildWithTag: @"dtstart"];
-      [date setTimeZone: tz];
-      [date setDateTime: value];
+      tzOffset = [[value timeZone] secondsFromGMTForDate: value];
+      value = [value dateByAddingYears: 0 months: 0 days: 0
+                                 hours: 0 minutes: 0
+                               seconds: -tzOffset];
+      [date setDate: value];
     }
   else
     {
@@ -364,8 +387,11 @@
   if (value)
     {
       date = (iCalDateTime *) [vToDo uniqueChildWithTag: @"due"];
-      [date setTimeZone: tz];
-      [date setDateTime: value];
+      tzOffset = [[value timeZone] secondsFromGMTForDate: value];
+      value = [value dateByAddingYears: 0 months: 0 days: 0
+                                 hours: 0 minutes: 0
+                               seconds: -tzOffset];
+      [date setDate: value];
     }
   else
     {
@@ -377,8 +403,11 @@
   if (value)
     {
       date = (iCalDateTime *) [vToDo uniqueChildWithTag: @"completed"];
-      [date setTimeZone: tz];
-      [date setDateTime: value];
+      tzOffset = [[value timeZone] secondsFromGMTForDate: value];
+      value = [value dateByAddingYears: 0 months: 0 days: 0
+                                 hours: 0 minutes: 0
+                               seconds: -tzOffset];
+      [date setDate: value];
     }
   else
     {
@@ -421,7 +450,7 @@
   // percent complete
   // NOTE: this does not seem to work on Outlook 2003. PidLidPercentComplete's value
   //       is always set to 0, no matter what value is set in Outlook
-  value = [properties objectForKey: MAPIPropertyKey(PidLidPercentComplete)];
+  value = [properties objectForKey: MAPIPropertyKey (PidLidPercentComplete)];
   if (value)
     [vToDo setPercentComplete: [value stringValue]];
 
@@ -433,11 +462,8 @@
   [vToDo setTimeStampAsDate: now];
 
   [sogoObject saveContentString: [vCalendar versitString]];
-  [(MAPIStoreTasksFolder *) container synchroniseCache];
-  value = [properties objectForKey: MAPIPropertyKey (PR_CHANGE_KEY)];
-  if (value)
-    [(MAPIStoreTasksFolder *) container
-        setChangeKey: value forMessageWithKey: [self nameInContainer]];
+
+  [self updateVersions];
 }
 
 @end

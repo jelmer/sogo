@@ -529,14 +529,19 @@ DIV.dTreeNode A._selected SPAN.nodeName
   color: #fff;
 }
 
+/* drag'n'drop */
+
 DIV.dTreeNode SPAN._dragOver
 { 
   background-color: #9ABCD8;
   color: #fff;
 }
 
-INPUT.checkBox
-{ vertical-align: middle; }
+.genericHoverClass
+{
+  background-color: #9ABCD8 !important;
+  color: #fff !important;
+}
 
 /* resizable columns */
 
@@ -551,12 +556,6 @@ DIV.resize-handle
   position: absolute;
   top: 0px;
   left: 0px; }
-
-.genericHoverClass
-{
-  background-color: #9ABCD8 !important;
-  color: #fff !important;
-}
 
 DIV.dialog
 { position: absolute;
@@ -814,9 +813,7 @@ SPAN.caption
 
 DIV.tabsContainer
 { overflow: hidden;
-  padding: 0px 5px;
-  -moz-user-select: none;
-  -khtml-user-select: none; }
+  padding: 0px 5px; }
 
 DIV.tabsContainer > DIV.scrollToolbar
 { position: absolute;
@@ -1061,6 +1058,13 @@ DIV.bottomToolbar A.bottomButton SPAN:active
 /* row editing */
 .editing > INPUT[type="text"]
 { width: 98%; }
+
+.safetyBlock
+{ position: absolute;
+  top: 0px;
+  right: 0px;
+  bottom: 0px;
+  left: 0px; }
 
 @media print
 {

@@ -1,3 +1,1223 @@
+2012-03-23  Francis Lachapelle  <flachapelle@inverse.ca>
+
+	* Tools/SOGoToolUserPreferences.m (-run): we now take the proper
+	argument when setting the user defaults from the command-line.
+
+2012-03-22  Francis Lachapelle  <flachapelle@inverse.ca>
+
+	* UI/MailerUI/UIxMailFolderActions.m (-emptyTrashAction:): we now
+	unsubscribe from the folders found in the trash.
+
+2012-03-21  Wolfgang Sourdeau  <wsourdeau@inverse.ca>
+
+	* SoObjects/SOGo/SOGoUserManager.m (_compactAndCompleteContacts:):
+	if "mail" is an array, all values are added to "c_emails".
+
+	* SoObjects/Contacts/SOGoContactSourceFolder.m
+	(_flattenedRecord:): if "mail" is an array, we only take the first
+	value of it.
+
+	* SoObjects/Contacts/SOGoContactLDIFEntry.m (-simplifiedRecord):
+	new record guaranteeing that all array values have been stripped
+	and converted to strings.
+
+2012-03-20  Francis Lachapelle  <flachapelle@inverse.ca>
+
+	* SoObjects/Mailer/SOGoMailObject+Draft.m
+	(_contentForEditingFromKeys:): prefer the HTML part over the text
+	part when composing HTML messages.
+
+2012-03-19  Wolfgang Sourdeau  <wsourdeau@inverse.ca>
+
+	* Main/SOGo+DAV.m (_fillCollections:where:matches:inContext:):
+	added bogosupport for
+	"{http://calendarserver.org/ns/}email-address-set".
+	(_principalCollectionsMatching:inContext:): relationship between
+	search criteria is now and "OR" rathern than an "AND".
+
+	* SoObjects/Appointments/SOGoUserFolder+Appointments.m
+	(-davCalendarUserType, -davEmailAddressSet): new DAV accessors.
+
+	* OpenChange/MAPIStoreCalendarMessage.m (-save): check recipients
+	even if PidLidAppointmentStateFlags is nil or 0, since all that
+	matters is that the "recipients" dict be present in the properties
+	dictionary.
+
+	* OpenChange/SOGoMAPIFSMessage.m (-init): init 2 new ivars:
+	fileSize and lastModificationTime.
+	(-properties): check the current file size and last modification
+	time against cached values and reload the props file if anything
+	changed.
+	(-creationTime, -lastModificationTime): new return type: NSDate
+	instead of NSCalendarDate.
+
+2012-03-16  Wolfgang Sourdeau  <wsourdeau@inverse.ca>
+
+	* OpenChange/MAPIStoreGCSFolder.m
+	(-predecessorChangeListForMessageWithKey:): same as below.
+	(-setChangeKey:forMessageWithKey:): synchronise the version cache
+	if the message entry is not found.
+	(-updateVersionsForMessageWithKey:withChangeKey:): new method,
+	common to all GCS messages, that updates the folder cache and
+	insert the PidTagChangeKey provided by the client during the save
+	operations.
+
+	* OpenChange/MAPIStoreMailFolder.m
+	(-predecessorChangeListForMessageWithKey:): the returned list must
+	be binary ordered by GUID (as specified in the SPEC). We now do so
+	using the new function below.
+	(-getPidTagMessageClass:inMemCtx:): removed method, as folders are
+	not supposed to return a PidTagMessageClass attribute.
+
+	* OpenChange/MAPIStoreTypes.m (MAPICNCompare): added as void *
+	parameter so that the function can be used as a comparator
+	function in NSArray sort methods.
+	(MAPIChangeKeyGUIDCompare): new comparator function to compare the
+	GUID of two change key streams.
+
+	* OpenChange/MAPIStoreGCSMessage.m (-updateVersions): new proxy
+	method for -[MAPIStoreGCSFolder
+	updateVersionsForMessageWithKey:withChangeKey:].
+
+	* OpenChange/MAPIStoreGCSBaseContext.m
+	(+createRootSecondaryFolderWithFID:andName:forUser:): setup the
+	userContext in the MAPIApp object.
+
+	* OpenChange/MAPIStoreMailContext.m
+	(+createRootSecondaryFolderWithFID:andName:forUser:): setup the
+	userContext in the MAPIApp object.
+
+	* OpenChange/MAPIStoreContactsFolder.m
+	(-getPidTagDefaultPostMessageClass:inMemCtx:): new getter.
+
+	* OpenChange/MAPIStoreCalendarFolder.m
+	(-getPidTagDefaultPostMessageClass:inMemCtx:): new getter.
+
+	* OpenChange/MAPIStoreTasksFolder.m
+	(-getPidTagDefaultPostMessageClass:inMemCtx:): new getter.
+
+	* OpenChange/MAPIStoreFolder.m
+	(-getPidTagDefaultPostMessageClass:inMemCtx:): new getter.
+
+	* OpenChange/MAPIStoreMessage.m
+	(-getPidTagMessageStatus:inMemCtx:): removed useless getter.
+
+	* OpenChange/MAPIStoreSOGo.m (sogo_backend_init): check for
+	"SOGoDebugLeaks" in the user defaults and activate GSDebug
+	allocation utilities.
+
+	* OpenChange/NSData+MAPIStore.m (+dataWithChangeKeyGUID:andCnt:):
+	new method replacing _dataFromChangeKeyGUID:andCnt: from
+	MAPIStore{GCS,Mail}Folder.
+
+2012-03-16  Jean Raby  <jraby@inverse.ca>
+
+	* sogo.spec debian/sogo.postint: upon installation, update timestamp
+	on WebServerResources/* to let the webserver know the files changed.
+	Should fix issues where browsers would use a locally cached version
+	of a resource when the sogo package have just been upgraded.
+
+2012-03-15  Francis Lachapelle  <flachapelle@inverse.ca>
+
+	* UI/WebServerResources/generic.js (onPreferencesClick): don't
+	allow the user to open the preferences window multiple times.
+
+	* UI/WebServerResources/SOGoDragHandles.js (enableRightSafety):
+	new method to display a "safety" block on top of the right block
+	when dragging the handle. This fixes a problem when the right
+	block contains an instance of CKEditor.
+
+2012-03-14  Francis Lachapelle  <flachapelle@inverse.ca>
+
+	* UI/MailerUI/UIxMailFolderActions.m (-deleteAction): we now
+	unconditionaly unsubscribe from the folder and subscribe to the
+	folder moved to the trash.
+
+	* SoObjects/Mailer/SOGoMailFolder.m (-renameTo): idem.
+
+	* UI/WebServerResources/UIxPreferences.js (focusCKEditor)
+	(hideSignature): new functions to wait until the CKEditor is ready
+	before performing certain actions. Fixes a problem with IE.
+
+	* UI/WebServerResources/SOGoTimePicker.js (position): new method
+	to be able to recompute the position of the widget.
+
+	* UI/WebServerResources/UIxAppointmentEditor.js
+	(refreshAttendees): when changing the attendees, we recompute the
+	position of the time pickers because the attendees link could
+	shift up or down the time fields.
+
+2012-03-13  Francis Lachapelle  <flachapelle@inverse.ca>
+
+	* UI/WebServerResources/UIxFilterEditor.js (savePreferences):
+	only save the filters if there's at least one rule and one action defined.
+
+	* UI/WebServerResources/ContactsUI.js (configureDraggables):
+	increased the delay before starting drag and drop.
+
+	* UI/WebServerResources/MailerUI.js (configureDraggables): idem.
+
+	* UI/WebServerResources/UIxAclEditor.js (addUser): fixed
+	positioning of new user.
+
+2012-03-13  Wolfgang Sourdeau  <wsourdeau@inverse.ca>
+
+	* OpenChange/MAPIStoreCalendarFolder.m
+	(-getPidTagDefaultPostMessageClass:inMemCtx:): new getter.
+
+	* OpenChange/MAPIStoreFolder.m
+	(_modifyPermissionEntryForUser:withRoles:isAddition:withACLFolder:):
+	skip any modification when user is nil.
+	(_usernameFromEntryId:): when the bytes array is nil or is empty,
+	we return a nil username.
+	(-modifyPermissions:withCount:andFlags:): ignore the presence of
+	certain fields but not others depending on the requested
+	modification.
+
+2012-03-12  Francis Lachapelle  <flachapelle@inverse.ca>
+
+	* SoObjects/SOGo/WORequest+SOGo.m (-isIPhoneAddressBookApp): catch
+	the user agent of iOS 5.0.1 on iPad.
+
+2012-03-12  Wolfgang Sourdeau  <wsourdeau@inverse.ca>
+
+	* OpenChange/MAPIStoreGCSFolder.m (-lastMessageModificationTime):
+	force a synchronisation from here to ensure that the cache is
+	up-to-date.
+
+	* OpenChange/MAPIStoreTypes.m (_reverseCN): fixed used of ull
+	constants on 32 bit platforms.
+
+	* OpenChange/MAPIStoreGCSFolder.m (-componentQualifier): now
+	provided by the parent class itself.
+	(-contentComponentQualifier): new method that returns a qualifier
+	that translated to "c_content like '%BEGIN:XXX%'". This is a hack
+	to work-around the fact that calendar folders may content both
+	vevent and vtodo and that c_component, being part of the quick
+	table, is no longer available when a record is deleted.
+	(-synchroniseCache): update version values for deleted records
+	too, by taking into account the fact that their c_version value
+	might still be 0. Make use of contentComponentQualifier above.
+	Remove the modified records from the SOGoGCSFolder cache.
+	(-getDeletedKeysFromChangeNumber:andCN:inTableType:): wander the
+	list of deleted records and no longer increase the change number,
+	as this is now done from "synchroniseCache". Also, handle the case
+	were deleted records might already have been reported by comparing
+	their change number to the one provided as parameter. The
+	resulting change number is now guaranteed to be the highest one.
+	(-component): new subclassable method that returns a string
+	matching the folder's handled component.
+
+	* OpenChange/MAPIStoreFolder.m
+	(-getPidTagLocalCommitTimeMax:inMemCtx:): returns
+	MAPISTORE_ERR_NOT_FOUND if the resulting date is nil.
+
+	* OpenChange/MAPIStoreGCSMessage.m
+	(-getPidTagPredecessorChangeList:inMemCtx:): when the list is
+	missing, request a synchronisation from the container as the
+	message might now have been synchronised yet...
+
+	* OpenChange/MAPIStoreTypes.m (MAPICNCompare): new function that
+	returns an NSComparisonResult for two change numbers (reverse
+	format).
+
+2012-03-11  Wolfgang Sourdeau  <wsourdeau@inverse.ca>
+
+	* OpenChange/MAPIStoreCalendarMessage.m
+	(-getPidLidAppointmentMessageClass:inMemCtx:): returns "IPM.Appointment".
+	(-getPidLidSideEffects:inMemCtx:): returns the value specified in
+	OXOCAL, section 2.2.2.2.
+	(_fixupAppointmentObjectWithUID:): renamed method and made more
+	generic, in order to handle the case where the response record has
+	already been deleted.
+	(-save): handle organizer and attendees more in compliance with
+	the spec, in order to avoid ending up with an empty event when an
+	invitation is being replied to. Of course, the documentation
+	happened to be inexact with regardes to the value of
+	"PidTagRecipientTrackStatus", which can be 5 even though the user
+	replied with another value... Also, lowered the priority of
+	SOGo-specific hacks for setting the organizer.
+
+2012-03-09  Wolfgang Sourdeau  <wsourdeau@inverse.ca>
+
+	* OpenChange/MAPIStoreMailVolatileMessage.m (-submitWithFlags:):
+	skip any message that is not of class "IPM.Note", in order to
+	avoid sending invitations or responses.
+
+	* SoObjects/Mailer/SOGoMailFolder.m (-renameTo:): reset the
+	imap4URL to nil and change the nameInContainer after a successful
+	operation.
+
+	* OpenChange/MAPIStoreFolder.m
+	(-getTable:andRowCount:tableType:andHandleId:): if the current
+	user is not the owner of the folder, the permissions table cannot
+	be open and MAPISTORE_ERR_DENIED is now returned.
+
+	* SoObjects/Contacts/NGVCard+SOGo.m
+	(_setupEmailFieldsInLDIFRecord:): the value of card elements were
+	not properly extracted when no email field were of type "home" or
+	"work".
+
+2012-03-08  Francis Lachapelle  <flachapelle@inverse.ca>
+
+	* UI/WebServerResources/generic.js (getTopWindow): extend the
+	attributes of document.body before calling "hasClassName" to fix
+	an error with IE9.
+
+2012-03-08  Wolfgang Sourdeau  <wsourdeau@inverse.ca>
+
+	* OpenChange/MAPIStoreFolder.m: commented out key cache ivars
+	(temporarily).
+
+	* OpenChange/MAPIStoreContext.m (-getRootFolder:inMemCtx:): do not
+	store the looked up folders when they are not descendants of
+	SOGoObject. Return MAPISTORE_ERR_NOT_FOUND when the looked up
+	folder is owner by the current user and MAPISTORE_ERR_DENIED
+	otherwise.
+
+	* OpenChange/MAPIStoreGCSFolder.m (-synchroniseCache): ensure that
+	any record that are marked as updated are removed from the record
+	cache of the corresponding SOGoGCSFolder instance.
+
+	* OpenChange/MAPIStoreFolder.m (-getPidTagSubFolders:inMemCtx:):
+	invoke [self folderKeys] rather than the corresponding ivar.
+
+	* OpenChange/MAPIStoreTypes.m (NSObjectFromMAPISPropValue)
+	(NSObjectFromSPropValue): treat PT_ERROR just as PT_LONG.
+
+2012-03-06  Wolfgang Sourdeau  <wsourdeau@inverse.ca>
+
+	* SoObjects/Mailer/SOGoMailFolder.m
+	(-archiveUIDs:inArchiveNamed:inContext:): output filename is now
+	escaped without its extension.
+
+	* SoObjects/Contacts/NGVCard+SOGo.m
+	(-_setupEmailFieldsInLDIFRecord:): simplified code and fixed a bug
+	where the home mail would be taken for both first and second email
+	fields when no work mail was present.
+
+2012-03-02  Wolfgang Sourdeau  <wsourdeau@inverse.ca>
+
+	* OpenChange/MAPIStoreAppointmentWrapper.m,,
+	OpenChange/MAPIStoreAttachment.m,
+	OpenChange/MAPIStoreCalendarAttachment.m,
+	OpenChange/MAPIStoreCalendarMessage.m,
+	OpenChange/MAPIStoreContactsAttachment.m,
+	OpenChange/MAPIStoreContactsMessage.m,
+	OpenChange/MAPIStoreFAIMessage.m,
+	OpenChange/MAPIStoreFSMessageTable.m,
+	OpenChange/MAPIStoreFolder.m, OpenChange/MAPIStoreFolderTable.m,
+	OpenChange/MAPIStoreGCSFolder.m, OpenChange/MAPIStoreGCSMessage.m,
+	OpenChange/MAPIStoreGCSMessageTable.m,
+	OpenChange/MAPIStoreMailAttachment.m,
+	OpenChange/MAPIStoreMailFolder.m,
+	OpenChange/MAPIStoreMailMessage.m,
+	OpenChange/MAPIStoreMailMessageTable.m,
+	OpenChange/MAPIStoreMessage.m, OpenChange/MAPIStoreNotesMessage.m,
+	OpenChange/MAPIStoreObject.m,
+	OpenChange/MAPIStorePermissionsTable.m,
+	OpenChange/MAPIStoreTasksMessage.m,
+	OpenChange/MAPIStoreVolatileMessage.m: updated name of getters to
+	reflect the new nomenclature.
+
+	* OpenChange/NSArray+MAPIStore.[hm]: updated to new name of
+	handled structs.
+
+	* OpenChange/gen-property-selectors.py: adapted for new getters
+	name, based on new property names. Added all new clashing
+	properties to bannedProps.
+
+2012-03-02  Jean Raby  <jraby@inverse.ca>
+
+	* Scripts/sogo-backup.sh: new script to automate backups.
+	Updated sogo.cron to include a commented out entry for sogo-backup.sh
+	Include updates.php in the packages
+
+2012-03-01  Wolfgang Sourdeau  <wsourdeau@inverse.ca>
+
+	* SoObjects/SOGo/LDAPSource.m (_convertRecordToLDAPAttributes):
+	make sure no field get listed twice in the list of valid field
+	names by using "removeDoubles".
+	(_makeLDAPChanges): don't bother checking whether the removed
+	attributes are strings.
+
+	* SoObjects/SOGo/NSArray+Utilities.m (-[NSMutableArray
+	removeDoubles]): new method removing doublons.
+
+2012-03-01  Francis Lachapelle  <flachapelle@inverse.ca>
+
+	* UI/WebServerResources/ContactsUI.js (appendAddressBook): assume
+	that lists can be created in the new addressbook.
+
+2012-02-28  Wolfgang Sourdeau  <wsourdeau@inverse.ca>
+
+	* OpenChange/MAPIStoreMailFolder.m
+	(-moveCopyMessagesWithMIDs:andCount:fromFolder:withMIDs:andChangeKeys:wantCopy:):
+	we sync the version cache with the folder in order to update the
+	target message change keys, which was causing versioning issues
+	with Outlook 2010.
+
+	* OpenChange/gen-property-selectors.py: bannedProps is now an
+	array instead of a dict of "True" values.
+	Added "PrOabContainerGuid" to bannedProps.
+
+2012-02-27  Wolfgang Sourdeau  <wsourdeau@inverse.ca>
+
+	* OpenChange/MAPIStoreUserContext.m (-rootFolders:):
+	-[NGImap4Connection enableExtensions:] now takes an array of
+	strings rather than a single string argument.
+
+2012-02-24  Wolfgang Sourdeau  <wsourdeau@inverse.ca>
+
+	* SoObjects/Mailer/SOGoMailFolder.m: ensure the imap connection is
+	available before performing certain operations, otherwise return
+	an exception. This only applies on methods that return an
+	exception, others were left untouched.
+
+2012-02-23  Wolfgang Sourdeau  <wsourdeau@inverse.ca>
+
+	* OpenChange/MAPIStoreMailContext.m
+	(+listContextsForUser:withTDBIndexing:inMemCtx:): added back
+	"trashName".
+
+	* SoObjects/Appointments/SOGoCalendarComponent.m
+	(-sendEMailUsingTemplateNamed:forObject:previousObject:toAttendees:withType:):
+	added a "msgType" parameter that is added as value to the new
+	"x-sogo-message-type" header.
+	(-sendIMIPReplyForEvent:from:to:): added a "x-sogo-message-type"
+	to the headers.
+
+	* OpenChange/MAPIStoreMailContext.m
+	(+listContextForUser:withTDBIndexing:inMemCtx:): make sure special
+	folders have all the "folder" prefixes appended to their list of
+	names (for nested folders).
+
+	* OpenChange/MAPIStoreContext.m
+	(+createRootFolder:withFID:andName:forUser:withRole:): when the
+	creation of a folder fails in the proper contact, fallback on the
+	fallback context.
+
+	* SoObjects/Mailer/SOGoMailAccount.m
+	(-toManyRelationshipKeysWithNamespaces:): for some reason, we were
+	explicitly returning the drafts folder name in the batch whether
+	the corresponding folder exists or not, which is useless and
+	wrong since the folder in question might actually be a child of
+	another folder.
+
+	* OpenChange/MAPIStoreContext.m (-init): restored "containersBag"
+	mechanism where root context folders that are deeper than the
+	first level of their hierarchy needs to have their parent folders
+	retained.
+
+2012-02-23  Jean Raby   <jraby@inverse.ca>
+
+	* debian/rules: add a symlink to let gdb find debugging symbols
+  for libSOGo on debian/ubuntu. (gdb bug #9538)
+
+2012-02-22  Francis Lachapelle  <flachapelle@inverse.ca>
+
+	* SoObjects/SOGo/SOGoUserManager.m
+	(-authenticationSourceIDsInDomain:): when looking for a specific
+	domain, also return sources that are not associated to a domain.
+
+	* SoObjects/SOGo/SOGoSource.h
+	(-lookupContactEntryWithUIDorEmail:inDomain:): changed this method
+	of the protocol to specify a domain.
+	(-fetchContactsMatching:inDomain:): idem.
+
+	* SoObjects/Contacts/SOGoContactFolder.h
+	(-lookupContactsWithFilter:onCriteria:sortBy:ordering:inDomain:):
+	changed this method of the protocol to specify a domain.
+
+	* UI/WebServerResources/UIxAclEditor.js (addUser): fixed case when
+	both canSubscribeUsers and isPublicAccessEnabled are disabled.
+
+	* SoObjects/SOGo/SQLSource.m
+	(-_lookupContactEntry:considerEmail:inDomain:): if the configuration
+	parameter DomainFieldName is defined for the source, set the user
+	domain to the value of this field.
+	(-fetchContactsMatching:inDomain:): when the configuration parameter
+	DomainField is defined, limit the results to the entries matching
+	the specified domain.
+
+	* SoObjects/SOGo/SOGoUserManager.m (-sourceIDsInDomain): if the
+	source is not associated to a domain, set it to the requested
+	domain. It will be used by sources with dynamic domain assignation.
+
+2012-02-22  Wolfgang Sourdeau  <wsourdeau@inverse.ca>
+
+	* SoObjects/SOGo/SQLSource.m (_lookupContactEntry:considerEmail:):
+	make sure the value of column pointer to by _kindField is not nil,
+	nor an NSNull instance before treating it like a string.
+	Use the value of "_imapHostField", when available, to map the
+	"c_imaphostname" value of the contact/user record.
+	(-init): new "_imapHostField" ivar, holder of the value of
+	IMAPHostFieldName of the source configuration dictionary.
+
+2012-02-21  Wolfgang Sourdeau  <wsourdeau@inverse.ca>
+
+	* SoObjects/SOGo/SOGoSQLUserProfile.m (-fetchJSONProfileFromDB):
+	removed an escaping hack for Oracle that should no longer be
+	required after the recent fixes in the Oracle adaptor, and which
+	was causing bad unescaping of double-escaped backslashes.
+
+	* Tests/Unit/TestSBJsonParser.m (-test_parseJSONString): added a
+	line for escaped characters.
+
+	* SoObjects/Appointments/SOGoAppointmentFolders.m
+	(-davEventsDefaultClassification,)
+	(setDavEventsDefaultClassification:)
+	(-davTasksDefaultClassification)
+	(-setDavTasksDefaultClassification:): new DAV accessors for the
+	default classification preferences.
+
+	* Tests/Integration/test-default-classification.py: new test
+	module for setting/getting defaults classification preferences.
+
+2012-02-20  Wolfgang Sourdeau  <wsourdeau@inverse.ca>
+
+	* UI/Scheduler/UIxComponentEditor.m (-setComponent:): fetch
+	default classification from user defauts.
+
+	* UI/PreferencesUI/UIxPreferences.m
+	(-calendarClassificationsList): new getter for the list of
+	classifications.
+	(-itemClassificationText): new i81n getter.
+	(-setEventsDefaultClassification:, -eventsDefaultClassification)
+	(-setTasksDefaultClassification:, -tasksDefaultClassification):
+	new accessors.
+
+	* SoObjects/SOGo/SOGoUserDefaults.m
+	(-setCalendarEventsDefaultClassification:)
+	(-calendarEventsDefaultClassification)
+	(-setCalendarTasksDefaultClassification:)
+	(-calendarTasksDefaultClassification): new accessors related to
+	the user-configured default classification of calendar components.
+
+	* UI/Scheduler/UIxComponentEditor.m: s/privacy/classification/g,
+	which is a better description for the "CLASS" attribute.
+
+2012-02-20  Francis Lachapelle  <flachapelle@inverse.ca>
+
+	* UI/WebServerResources/UIxMailEditor.js (onWindowResize): we now
+	make use of the ckeditor javascript api to reszie the container.
+
+2012-02-20  Wolfgang Sourdeau  <wsourdeau@inverse.ca>
+
+	* OpenChange/MAPIStoreGCSFolder.m (-setDisplayName:): new method
+	that intercept the setting of PR_DISPLAY_NAME_UNICODE following
+	the mechanism described below.
+	(-getPrDisplayName:inMemCtx): overriden method.
+
+	* OpenChange/MAPIStoreGCSBaseContext.m (+folderNameSuffix): new
+	method that returns an optional suffix to differentiate between
+	SOGo folders that are common to multiple Outlook folders, in
+	particular for Calendar and Tasks folder.
+	(+getFolderDisplayName:): new utility method that returns a
+	display name with the above suffix added properly.
+
+	* OpenChange/MAPIStoreObject.m (-setMAPIRetainCount)
+	(-retainCount): removed accessors as well as the corresponding
+	"mapiRetainCount" ivar as this was part of an unused feature.
+
+2012-02-16  Francis Lachapelle  <flachapelle@inverse.ca>
+
+	* UI/WebServerResources/UIxAttendeesEditor.js (checkAttendee):
+	stop observing events on input field before removing the row,
+	otherwise the blur event is triggered and generates an error.
+
+2012-02-14  Francis Lachapelle  <flachapelle@inverse.ca>
+
+	* UI/WebServerResources/ContactsUI.js (contactsListCallback): when
+	restoring selection after the folder refresh, call "selectElement"
+	on each row. This fixes the contacts selection retrieval when using the
+	contextual menu.
+
+2012-02-14  Wolfgang Sourdeau  <wsourdeau@inverse.ca>
+
+	* SoObjects/SOGo/SOGoUserManager.m (_compactAndCompleteContacts:):
+	we make sure that "source" is not nil before assigning it to the
+	compact record.
+
+	* SoObjects/SOGo/SQLSource.m (_lookupContactEntry:considerEmail:):
+	assign self as value for "source" in the returned record.
+	(-fetchContactsMatching): same as above.
+
+	* SoObjects/SOGo/SOGoSQLUserProfile.m (_sqlJsonRepresentation:):
+	removed obsolete method.
+	(-storeJSONProfileInDB:): we now properly escape the stored value
+	via the adaptor methods and by using a hacking EOAttribute
+	instance (FIXME).
+
+	* OpenChange/MAPIStoreMailFolder.m (-ensureFolderExists): new
+	method that attempts to create a folder when it does not exists
+	and returns NO if that creation failed or YES in any other case.
+	(-createFolder:withFID:andKey:): rc was never initialized when in
+	success code.
+	(-messageKeysMatchingQualifier:andSortOrderings:)
+	(-folderKeysMatchingQualifier:andSortOrderings:)
+	(-permissionEntries): invoke "ensureFolderExists" prior to any
+	operation.
+
+	* OpenChange/MAPIStoreContext.m
+	(+createRootFolder:withFID:andName:forUser:withRole:): removed the
+	"andTDBIndexing:" argument.
+	(+createRootSecondaryFolderWithFID:andName:forUser:): same as
+	above.
+
+	* OpenChange/MAPIStoreCalendarMessage.m
+	(-subscriberCanReadMessage): returns YES when the current role is
+	ComponentDAndTViewer too.
+
+2012-02-13  Wolfgang Sourdeau  <wsourdeau@inverse.ca>
+
+	* UI/WebServerResources/JavascriptAPIExtensions.js
+	(String.asCSSIdentifier): escape the "+" character as its going to
+	be used in a regexp.
+
+2012-02-13  Wolfgang Sourdeau  <wsourdeau@inverse.ca>
+
+	* UI/Contacts/UIxContactView.m (-photoURL, -hasPhoto): copied code
+	from UIxContactEditor, thereby replacing "photosURL".
+
+2012-02-10  Wolfgang Sourdeau  <wsourdeau@inverse.ca>
+
+	* UI/MailPartViewers/UIxMailPartHTMLViewer.m (+initialize): added
+	all simple tag to "VoidTags", based on list from
+	http://www.w3.org/TR/html4/index/elements.html.
+
+	* UI/WebServerResources/JavascriptAPIExtensions.js
+	(String.asCSSIdentifier): same as below.
+
+	* SoObjects/SOGo/NSString+Utilities.m (-setupCSSEscaping): add
+	"_P_" as escaping sequence for "+".
+
+	* UI/MailPartViewers/UIxMailPartHTMLViewer.m (+initialize): added
+	all simple tag to "VoidTags", based on list from
+	http://www.w3.org/TR/html4/index/elements.html.
+
+2012-02-10  Francis Lachapelle  <flachapelle@inverse.ca>
+
+	* UI/WebServerResources/generic.js (openMailTo): recipients are
+	now a JSON string (see commit of February 2nd).
+
+	* UI/MailPartViewers/UIxMailPartHTMLViewer.m
+	(-startElement:namespace:rawName:attributes:): we should not add
+	end tags to void tags (ex: <br>).
+
+2012-02-08  Francis Lachapelle  <flachapelle@inverse.ca>
+
+	* SoObjects/SOGo/SOGoGCSFolder.m (+webdavAclManager): must include
+	"write" in the "current-user-privilege-set" so the latest version
+	of AddressBook.app (bundled with 10.7.3) knows the personal
+	addressbook is writable by the owner.
+
+	* UI/WebServerResources/UIxAttendeesEditor.js
+	(performSearchCallback): set the uid parameter to null instead of
+	an empty string when the returned contact has no uid (ie, it comes
+	from a personal addressbook).
+
+2012-02-06  Wolfgang Sourdeau  <wsourdeau@inverse.ca>
+
+	* SoObjects/SOGo/LDAPSource.m: escape built DNs using the new
+	-[NSString escapedForLDAPDN] method.
+
+2012-02-03  Francis Lachapelle  <flachapelle@inverse.ca>
+
+	* UI/WebServerResources/UIxMailEditor.js (onRemoveAttachments):
+	instead of extracting the filename from the text nodes under the
+	list element, we now use the title attribute. This fixes an issue
+	with IE that would append an extra space to the filename.
+
+2012-02-03  Wolfgang Sourdeau  <wsourdeau@inverse.ca>
+
+	* OpenChange/MAPIStoreFolderTable.m
+	(-evaluatePropertyRestriction:intoQualifier:): overriden method to
+	always return true for restrictions on PR_CHANGE_NUM, in order to
+	help the fxics mechanism.
+
+	* OpenChange/MAPIStoreFolder.m (-deleteFolder): cleanup the caches
+	in order to let the folder disappear.
+
+	* OpenChange/MAPIStoreSOGo.m (sogo_backend_create_root_folder):
+	new backend method.
+
+	* OpenChange/MAPIStoreFolder.m (-createFolder:withFID:andKey:):
+	modified method to return a enum mapistore_error, in order to
+	better determine of the failures that occur.
+
+	* OpenChange/MAPIStoreMailFolder.m (-deleteFolder): overriden method.
+
+	* SoObjects/Mailer/SOGoMailFolder.m (-exists): new method that
+	returns whether an IMAP folder exists or not yet.
+
+2012-02-02  Francis Lachapelle  <flachapelle@inverse.ca>
+
+	* UI/MailerUI/UIxMailMainFrame.m (-composeAction): recipient
+	addresses are now passed as a JSON-formatted string.
+
+	* UI/MailerUI/UIxMailAccountActions.m (-composeAction): the
+	received "mailto" parameter is now a JSON-formatted string; we
+	parse it accordingly.
+
+2012-02-01  Wolfgang Sourdeau  <wsourdeau@inverse.ca>
+
+	* OpenChange/MAPIStoreUserContext.m (-destroy): dont't release
+	"username" as it is not initially retained.
+	(+userContextWithUsername:andTDBIndexing:): the resulting instance
+	is cached in the table from here instead.
+
+	* OpenChange/MAPIStoreTable.m (-destroyHandle:): skih operation if
+	the handle parameter is 0.
+
+	* OpenChange/SOGoMAPIFSMessage.m (-delete): returns the exception
+	rather than raising it.
+
+	* OpenChange/SOGoMAPIFSFolder.m (-delete): new method that removes
+	the directory from the filesystem.
+
+	* OpenChange/MAPIStoreGCSFolder.m (-deleteFolder): overriden method.
+
+	* OpenChange/MAPIStoreFolder.m (-deleteFolder): implemented method.
+
+	* SoObjects/SOGo/SOGoParentFolder.m (-removeSubFolder): new method
+	that removes a subfolder entry from the folder cache.
+
+	* OpenChange/MAPIApplication.m (-setUserContext:): do not retain
+	the user context.
+
+2012-02-01  Francis Lachapelle  <flachapelle@inverse.ca>
+
+	* UI/WebServerResources/UIxCalUserRightsEditor.js (onUpdateACL):
+	added some serious warnings when giving access rights to any
+	authenticated users or public access.
+
+	* UI/WebServerResources/UIxMailUserRightsEditor.js (onUpdateACL): idem.
+
+	* UI/WebServerResources/UIxContactsUserRightsEditor.js (onUpdateACL): idem.
+
+	* UI/Common/UIxUserRightsEditor.m (-folderName): new method that
+	returns the folder display name.
+	(-userDisplayName): now also return the names of anonymous and
+	authenticated users.
+
+2012-01-31  Francis Lachapelle  <flachapelle@inverse.ca>
+
+	* SoObjects/SOGo/WOResourceManager+SOGo.m
+	(-pathToLocaleForLanguageNamed:): if the language has a CamelCase
+	form, add the first part to the lookup languages.
+
+2012-01-31  Wolfgang Sourdeau  <wsourdeau@inverse.ca>
+
+	* OpenChange/MAPIStoreMailContext.m
+	(+listContextsForUser:withTDBIndexing:inMemCtx:): now returns
+	secondary folders.
+	(+[MAPIStoreOutboxContext
+	listContextsForUser:withTDBIndexing:inMemCtx:]): overridden method
+	in outbox-specific class.
+
+2012-01-30  Wolfgang Sourdeau  <wsourdeau@inverse.ca>
+
+	* OpenChange/MAPIStoreMailFolder.m (-addProperties): overriden
+	method in order to intercept rename operations.
+	(-initWithSOGoObject:inContainer:): removed obsolete method.
+
+	* OpenChange/MAPIStoreGCSFolder.m (-addProperties): overriden
+	method in order to intercept rename operations.
+
+	* SoObjects/Mailer/SOGoMailFolder.m (-renameTo:): new method,
+	implementing most of the code from [UIxMailFolderActions
+	renameFolderAction].
+
+	* OpenChange/MAPIStoreFallbackContext.m
+	(+listContextsForUser:withTDBIndexing:inMemCtx:): now returns the
+	fallback subfolders as secondary contexts (tmp hack).
+
+	* OpenChange/MAPIStoreUserContext.m (-rootFolders): new method
+	replacing the "...root" methods in way that can match the
+	MAPIModuleName.
+
+	* OpenChange/MAPIStoreGCSBaseContext.m
+	(+listContextsForUser:inMemCtx:): centralized code for all GCS
+	classes.
+
+2012-01-30  Francis Lachapelle  <flachapelle@inverse.ca>
+
+	* UI/WebServerResources/UIxCalUserRightsEditor.js (onUpdateACL):
+	ask confirmation when giving access to all authenticated users or
+	when giving public access.
+
+	* UI/WebServerResources/UIxMailUserRightsEditor.js (onUpdateACL): idem.
+
+	* UI/WebServerResources/UIxContactsUserRightsEditor.js (onUpdateACL): idem.
+
+	* UI/WebServerResources/SchedulerUI.js (onViewEventCallback):
+	moved start/end time just under the event name.
+
+	* UI/WebServerResources/generic.js (showConfirmDialog): this
+	function now accepts two additional arguments to change the
+	default "yes" and "no" buttons.
+
+2012-01-29  Wolfgang Sourdeau  <wsourdeau@inverse.ca>
+
+	* OpenChange/MAPIStoreMailContext.[hm]: removed
+	"MAPIStoreInboxContext", "MAPIStoreSentItemsContext",
+	and child folders."MAPIStoreDraftsContext" and
+	"MAPIStoreOutboxContext" which have made obsolete by the new
+	provisioning and instantiation mechanisms.
+
+	* OpenChange/MAPIStoreContext.m (-woContext:, -mapping)
+	(-authenticator): those methods are now part of
+	MAPIStoreUserContext.
+	(-setupBaseFolder:): removed method, obsoleted by those below.
+	(-getRootFolder:withFID:): the "root folder" is now instantiated
+	by lookups from the root folder provided by the user context and
+	the chain of folders listed in the context url path.
+	(-MAPIStoreFolderClass): new method returning the Class object
+	representing the context's class of objects.
+	(-rootSOGoFolder): new method that returns the proper root folder
+	depending on the context's class of objects.
+
+	* OpenChange/MAPIStoreFolder.m (-initWithURL:inContext:): all
+	folders are now instantiated the same way since root objects are
+	now stored in the MAPIStoreUserContext instancesB.
+	(-setContext:): new setter to provide a reference to the folder's
+	mapistore context instance from the topmost parent.
+	(-setupVersionsMessage:): new helper method invoked during the
+	folder instantiations, from the moment its parent context has been
+	made available, which does not occur at the same moment for parent
+	and child folders...
+
+	* OpenChange/MAPIApplication.m (-init): removed the "mapiContext"
+	but added the "userContext" ivars.
+
+	* SoObjects/SOGo/SOGoFolder.m (-outlookFolderClass): removed
+	useless method.
+
+	* OpenChange/MAPIStoreUserContext.[hm]: new class for accessing
+	user data common to all "mapistore contexts" as a singleton: the
+	same instance is used across all requests until all related
+	objects have been freed.
+
+2012-01-27 Ludovic Marcotte  <lmarcotte@inverse.ca>
+
+	* SoObjects/Appointments/SOGoAppointmentFolder.m
+	(bareFetchFields: ...) - we now cache the returned
+	results - just like for fetchFields:...
+
+	* SoObjects/Appointments/SOGoAppointmentFolderObject.m 
+	(_folderCalenars) - we now ask for the c_content and use
+	a local autorelease pool to avoid consuming too much memory
+
+2012-01-26  Wolfgang Sourdeau  <wsourdeau@inverse.ca>
+
+	* OpenChange/MAPIStoreCommonViewsContext.[hm],
+	OpenChange/MAPIStoreDeferredActionsContext.[hm],
+	OpenChange/MAPIStoreFreebusyContext.[hm],
+	OpenChange/MAPIStoreJournalContext.[hm],
+	OpenChange/MAPIStoreRemindersContext.[hm],
+	OpenChange/MAPIStoreScheduleContext.[hm],
+	OpenChange/MAPIStoreSearchContext.[hm],
+	OpenChange/MAPIStoreShortcutsContext.[hm],
+	OpenChange/MAPIStoreSpoolerContext.[hm],
+	OpenChange/MAPIStoreViewsContext.[hm]: deleted obsolete classes.
+
+	* OpenChange/MAPIStoreFolder.m (supportsSubFolders): new
+	overridable method that returns whether the current folder can
+	contain subfolders, nowithstanding the right of the current user
+	to create or access them.
+
+	* OpenChange/MAPIStoreSOGo.m (sogo_backend_list_contexts): new
+	backend method.
+
+	* OpenChange/MAPIStoreContext.m
+	(+listAllContextsForUser:inMemCtx:): centralized method for
+	returning all contexts available from all context classes for one
+	user.
+	(+listContextsForUser:inMemCtx:): new individual method invoked by
+	the above. Overridden by concrete subclasses.
+
+2012-01-26 Ludovic Marcotte  <lmarcotte@inverse.ca>
+
+    * SoObjects/SOGo/LDAPSource.{h,m} - now honor
+	userPasswordAlgorithm when changing the password with
+	no password-policy. It'll now be encrypted per your
+	preference. This fixes #755
+
+2012-01-25  Ludovic Marcotte  <lmarcotte@inverse.ca>
+
+	* SOPE/GDLContentStore/GCSFolder.m - we now use the proper
+	method to determine column types, avoiding the generation
+	of broken UPDATE statements on MySQL when snoozing alarms.
+
+2012-01-24  Francis Lachapelle  <flachapelle@inverse.ca>
+
+	* UI/Scheduler/UIxCalFolderActions.m (-importAction): failback to
+	latin-1 when utf-8 decoding doesn't work.
+
+2012-01-19  Francis Lachapelle  <flachapelle@inverse.ca>
+
+	* UI/WebServerResources/UIxMailToSelection.js
+	(addressFieldChanged): remove commas before testing email regexp.
+
+2012-01-17  Wolfgang Sourdeau  <wsourdeau@inverse.ca>
+
+	* UI/WebServerResources/UIxFilterEditor.js (setupNewFilterData):
+	mark new filter as active by default.
+
+2012-01-17  Francis Lachapelle  <flachapelle@inverse.ca>
+
+	* UI/WebServerResources/UIxPreferences.js (initPreferences): When
+	the mail composer is set to use HTML, the reply position popup
+	menu is disabled. When switching to text-based message,
+	the popup menu is now correctly re-enabled.
+
+2012-01-16  Wolfgang Sourdeau  <wsourdeau@inverse.ca>
+
+	* SoObjects/SOGo/SQLSource.m (_lookupContactEntry:considerEmail:)
+	(fetchContactsMatching:): assigned self to the "source" key of the
+	returned dictionaries.
+
+2012-01-13  Francis Lachapelle  <flachapelle@inverse.ca>
+
+	* SoObjects/Appointments/SOGoAppointmentFolder.m
+	(-caldavFreeBusyRequestOnRecipient:withUID:andOrganizer:from:to:):
+	if the recipient is not associated to a user (from an
+	authentication source), verify if it is a contact (from an
+	addressbook source). If it is, SOGoFreeBusyObject will take care
+	of fetching the freebusy information if the contact is associated
+	to a MS Exchange server.
+
+	* SoObjects/Appointments/SOGoFreeBusyObject.m
+	(-iCalPersonWithUID:): if no user is found from an authentication
+	source, verify if it matches a contact from an addressbook
+	source.
+	(-contentAsStringWithMethod:andUID:andOrganizer:andContact:from:to:):
+	added new parameter "contactID".
+
+	* SoObjects/Appointments/iCalPerson+SOGo.m (-contactIDInContext:):
+	new method that tries to associated the person's email address to
+	a contact ID.
+
+2012-01-12  Francis Lachapelle  <flachapelle@inverse.ca>
+
+	* SoObjects/SOGo/SOGoSource.h (-bindDN, -bindPassword)
+	(-MSExchangeHostname): new accessors to the SOGoDNSource protocol.
+
+	* SoObjects/SOGo/LDAPSource.m (-_convertLDAPEntryToContact:):
+	added a reference to the instance source in the returned dictionary.
+
+	* SoObjects/SOGo/SOGoUserManager.m
+	(-_compactAndCompleteContacts:): keep the source instance in the
+	returned dictionary.
+
+	* UI/MainUI/SOGoUserHomePage.m (-readFreeBusyAction): the http
+	post can now include an optional "uid" parameter to perform the
+	freebusy lookup on the user corresponding to the specified
+	uid. This covers the special case where we want to query a user
+	from a contact source (not an authentication source) and for which
+	external freebusy information is available (currently limited to a
+	Microsoft Exchange server with Web Services enabled).
+
+	* SoObjects/Appointments/SOGoFreeBusyObject.m
+	(-fetchFreeBusyInfosFrom:to:forUser:): new method currently
+	limited perform a SOAP request to a MS Exhange server to retrieve
+	the freebusy information of a user.
+
+	* UI/Scheduler/UIxComponentEditor.m (-_loadAttendees): when the
+	attendee's email address doesn't match a user from the
+	authentication source(s), perform a lookup in the addressbook
+	source(s). If the email matches a user from a source with a
+	MSExchangeHostname, return a concatenation of the active user uid
+	and this contact uid.
+
+	* UI/WebServerResources/UIxAttendeesEditor.js
+	(performSearchCallback): if a matching contact has the
+	"isMSExchange" attribute, prefix the uid with the login uid.
+	(_performAjaxRequest): query the freebusy information from the
+	login user (/SOGo/so/<loginuser>/freebusy.ifb/ajaxRead?uid=<contact>)
+	when a contact uid is specified. Otherwise, perform the query on
+	the user instance as usual (/SOGo/so/<contactuser>/freebusy.ifb/ajaxRead).
+
+2012-01-12  Wolfgang Sourdeau  <wsourdeau@inverse.ca>
+
+	* OpenChange/MAPIStoreCalendarMessage.m (-save): same as below +
+	ensure that nil fields are removed from non-new instances.
+
+	* OpenChange/MAPIStoreAppointmentWrapper.m
+	(-getPrStartDate:inMemCtx:, -getPrEndDate:inMemCtx:): remove the
+	tz offset from dates in all-day events.
+
+	* OpenChange/MAPIStoreTasksMessage.m (-save): the dates provided
+	by Outlook for start, due and completed are all-day dates, we thus
+	need to remove the timezone offset from those dates.
+
+2012-01-11  Wolfgang Sourdeau  <wsourdeau@inverse.ca>
+
+	* OpenChange/MAPIStoreGCSMessageTable.m
+	(_fixedDatePropertyRestriction:inMemCtx:): attached the result to
+	the memCtx passed as parameter to avoid a leak.
+
+2012-01-10  Wolfgang Sourdeau  <wsourdeau@inverse.ca>
+
+	* SoObjects/Appointments/SOGoAppointmentObject.m
+	(_requireResponseFromAttendees:): initialize listHasChanged to NO.
+
+	* OpenChange/MAPIStoreMailFolder.m (_parseCOPYUID): the uniString
+	buffer was allocated one byte too short.
+
+2012-01-09  Wolfgang Sourdeau  <wsourdeau@inverse.ca>
+
+	* OpenChange/NSObject+MAPIStore.m (-getValue:forTag:inMemCtx:):
+	handle PT_SVREID just as PT_BINARY.
+
+	* OpenChange/MAPIStoreCalendarFolder.m (-exchangeRightsForRoles):
+	add the freebusy read rights when the user has read permission on
+	calendar objects.
+
+2012-01-05  Francis Lachapelle  <flachapelle@inverse.ca>
+
+	* SoObjects/SOGo/SOGoUserManager.m (-_registerSource:inDomain::):
+	log error when duplicated IDs are found.
+
+2012-01-04  Wolfgang Sourdeau  <wsourdeau@inverse.ca>
+
+	* UI/WebServerResources/ContactsUI.js
+	(onAddressBooksMenuPrepareVisibility): the "new list", "sharing" and "import"
+	options are now greyed out properly, depending on the object type
+	and the new attributes below.
+
+	* UI/Contacts/UIxContactFoldersView.m
+	(-currentContactFolderAclEditing)
+	(-currentContactFolderListEditing): new attribute accessors.
+
+	* SoObjects/SOGo/SOGoFolder.m (-sendFolderAdvisoryTemplate:):
+	moved method from SOGoGCSFolder in order to make it available to
+	other folder classes.
+
+	* SoObjects/SOGo/LDAPSource.m (-initFromUDSource:inDomain:): use
+	the new setters for certain ivars + take the new "abOU" key into
+	account.
+	(-setListRequiresDot:, -listRequiresDot:, -setSourceID:)
+	(-setDisplayName, -displayName, -setModifiers:): new accessors.
+	(-_convertRecordToLDAPAttributes): we now strip object classes that
+	are not supported by the server prior to remove the related fields.
+	(-hasUserAddressBooks): new method that returns whether user
+	addressbooks are supported, i.e. when "abOU" is set.
+	(-addressBookSourcesForUser:): when "abOU" is set, returns an
+	array of LDAPSource instances representing the personal
+	addressbooks of the specified user.
+	(-addAddressBookSource:withDisplayName:forUser:)
+	(-renameAddressBookSource:withDisplayName:forUser:)
+	(-removeAddressBookSource:forUser:): new methods with a
+	self-explicit name.
+
+	* SoObjects/Contacts/SOGoContactSourceFolder.m
+	(-setIsPersonalSource, -isPersonalSource): new accessors for the
+	"isPersonalSource ivar".
+	(-lookupName:inContext:acquire:): setup the object classes of the
+	new entries to "inetorgperson" and "mozillaabpersonalpha".
+	(-lookupContactsWithFilter:onCriteria:sortBy:ordering:): check
+	whether "listRequiresDot" is set on the current source and return
+	the full listing if not required.
+	(-compare:): enhanced to treat personal sources as if they were
+	regular GCS folders, in order to sort them properly.
+	(-delete, -renameTo:): implemented method, required for the
+	corresponding web methods.
+	(-ownerInContext:) adapted method to personal sources.
+
+	* SoObjects/Contacts/SOGoContactFolders.m (-appendPersonalSource):
+	overriden method for returning LDAP-based user addresbook sources.
+	(-newFolderWithName:andNameInContainer:): idem
+	(-renameLDAPAddressBook:withDisplayName:): new method that enables
+	the renaming of LDAP-based user addresbook sources.
+	(-removeLDAPAddressBook:): new method that enables
+	the removal of LDAP-based user addresbook sources.
+
+2012-01-03  Wolfgang Sourdeau  <wsourdeau@inverse.ca>
+
+	* SoObjects/SOGo/SOGoParentFolder.m (-appendPersonalSources): made
+	method public so that it can be easily overriden in subclasses.
+
+	* SoObjects/SOGo/SOGoUser.m (-authenticationSource): new method
+	that returned the SOGoSource instance that successfully recognized
+	the user represented by the current instance.
+
+	* SoObjects/SOGo/SOGoUserManager.m
+	(_fillContactInfosForUser:withUIDorEmail:inDomain:): we now set
+	the identifier of the source that authenticated the specified user
+	as the "SOGoSource" entry of the returned dictionary.
+
+2012-01-03  Francis Lachapelle  <flachapelle@inverse.ca>
+
+	* SoObjects/Appointments/SOGoAptMailNotification.m (-setupValues):
+	don't set the start/end times when dealing with an all-day event.
+
+	* SoObjects/Appointments/SOGoAptMailInvitation.m (-getBody): don't
+	display the start/end times when dealing with an all-day event.
+
+	* SoObjects/Appointments/SOGoAptMailReceipt.m (-_formattedUserDate:): idem.
+
+	* SoObjects/Appointments/SOGoAptMailUpdate.m (-getSubject): idem.
+
+	* SoObjects/Appointments/SOGoAptMailDeletion.m (-getBody): idem.
+
+2012-01-02  Francis Lachapelle  <flachapelle@inverse.ca>
+
+	* UI/WebServerResources/UIxPreferences.js (getFilterFromEditor):
+	return a string (JSON) so the data is properly passed to the
+	opened window with IE7.
+
+	* UI/WebServerResources/UIxFilterEditor.js (ensureFieldValidity):
+	a field value is always considered invalid when empty.
+
+2011-12-30  Wolfgang Sourdeau  <wsourdeau@inverse.ca>
+
+	* SoObjects/SOGo/LDAPSourceSchema.[hm]: new class module enabling
+	schema auto-discovery.
+
+	* UI/WebServerResources/UIxContactEditor.js
+	(validateContactEditor): the birth date is validated slightly
+	differently, by enabling empty and 2-digit years as well as single
+	digits months and days.
+
+	* UI/Contacts/UIxContactView.m (-defaultAction, -dealloc): retain
+	and release the "card" ivar.
+	(_formattedURL:): the url should be displayed only if it is
+	non-nil AND non-empty.
+	(-vcardAction): removed useless method.
+
+	* UI/Contacts/UIxContactEditor.m (init): removed the "snapshot",
+	"preferredEmail", "card", "photosURL" and "contactCategories" ivars.
+	(-ldifRecord): new getter that proxy the invocation to the client
+	object, but by taking the contactEmail and contactFN url
+	parameters. Replaces the "-snapshot" getter, since the LDIF record
+	is now directly edited.
+	(-addressBooksList): the client object container class is no
+	longer taken into account when fetching the current user's permissions.
+	(-supportCategories, -supportPhotos): new getters that enables the
+	categories and photo tabs.
+	(-setJsonContactCategories:, -jsonContactCategories): now make
+	use of the special "vcardcategories" parameter found in the
+	contact LDIF record.
+
+	* SoObjects/SOGo/SQLSource.m (_lookupContactEntry:considerEmail:):
+	enhanced to copy the "c_XX" fields to unprefixed equivalents.
+
+	* SoObjects/Contacts/NSString+LDIF.m (mustEncodeLDIFValue): new
+	method, replacing "_isLDIFSafe" in a clearly public manner.
+
+	* SoObjects/SOGo/LDAPSource.m (-[NGLdapEntry _asDictionary]): new
+	utility method to convert an entry into a "SOGo LDIF record".
+	(-[NGLdapAttribute _asArrayOrString]): new utility method to
+	convert an LDAP attribute into a string or an array of strings
+	when the attribute has one or more values.
+	(-initFromUDSource:inDomain:): handle the new "modifiers",
+	"mapping" and "objectClasses" configuration keys, used when the
+	source instance is used as an addressbook. All LDAP fields are now
+	converted to lowercase.
+	(_searchAttributes): removed method as the special "*" attribute
+	is not costly enough to justify its existence, thereby reducing
+	code complexity.
+	(-lookupContactEntry:, -lookupContactEntryWithUIDorEmail:)
+	(-lookupLoginByDN:): merged common code in the new
+	-_lookupLDAPEntry: method, that accepts an EOQualifier as argument.
+	(--addContactEntry:withID:, -updateContactEntry: and
+	removeContactEntryWithID:): new methods for editing addressbook
+	sources.
+
+	* SoObjects/Contacts/SOGoContactSourceFolder.m (-source): new
+	getter for the "source" ivar.
+	(-lookupName:inContext:acquire:): accept the creation of new LDIF
+	entries via web methods ending with "AsContact".
+	(-saveLDIFEntry:, -deleteLDIFEntry:): new proxy methods for the
+	new SOGoSource -addContactEntry:withID:, -updateContactEntry: and
+	removeContactEntryWithID: methods, enabling the creation,
+	modification and deletion of LDAP contacts.
+	(-aclsForUser:): implemented method based on the array returned by
+	-[<SOGoSource> modifiers].
+
+	* SoObjects/Contacts/SOGoContactLDIFEntry.m (-vCard): the vcard is
+	now generated automatically from the LDIF record of the entry,
+	using the new method provided by NGVCard+SOGo.
+	(-aclsForUser:): new overriden method similar to the
+	implementation from SOGoContentObject.
+
+	* SoObjects/Contacts/SOGoContactGCSEntry.m (-setLDIFRecord)
+	(-ldifRecord, -hasPhoto): new accessors required by the
+	SOGoContactObject protocol.
+	(-lookupName:inContext:acquire:): return the only photo element
+	when the "photo" key is requested, if present in the card.
+	(-save): now returns an NSException, instead of void.
+
+	* SoObjects/Contacts/SOGoContactEntryPhoto.m
+	(+entryPhotoWithID:inContainer:, -setPhotoID:): removed methods,
+	since there can only be one PHOTO element per contact.
+	(-photo): simplified thanks to the constraint mentionned above.
+
+	* SoObjects/Contacts/NSDictionary+LDIF.m (-ldifRecordAsString):
+	new method implementing the code previously found in
+	SOGo/NSDictionary+Utilities.m, in order to produce a textual
+	representation of an LDIF record.
+
+	* SoObjects/Contacts/NSDictionary+LDIF.[hm]: new category module.
+
+	* SoObjects/Contacts/NGVCard+SOGo.m (-asLDIFRecord): new method
+	implementing the conversion code previously found in
+	UIxContactEditor, in order to produce an "LDIF record" in the form
+	of an NSDictionary matching the inetOrgPerson and
+	mozillaAbPersonAlpha object classes.
+	(-updateFromLDIFRecord:) reciprocal method to "-asLDIFRecord",
+	with conversion code moved from UIxContactEditor.
+
+	* SoObjects/Contacts/SOGoFolder+CardDAV.m (_isValidFilter:): make
+	use of the lowercase instance of the string, which was erroneously
+	ignored previously.
+
+2011-12-29  Ludovic Marcotte  <lmarcotte@inverse.ca.>
+
+	* SoObjects/SOGo/SOGoSQLUserProfile.m (_sqlJsonRepresentation:):
+	don't escape the / character as it's generating invalid JSON
+	output on newer versions of PostgreSQL.
+
+	* Dropped all references to "SOGoMailCheckAllUnseenCounts". We
+	now check all folders for which filters are defined with a
+	"fileinto" action - even if they are disable.
+
+	* UI/MailerUI/UIxMailAccountActions.m (_jsonFolders:) - we
+	use a local autorelease pool in the tight loop to avoid consuming
+	too many LDAP connections during its execution.
+
+2011-12-23  Francis Lachapelle  <flachapelle@inverse.ca>
+
+	* UI/Scheduler/UIxAppointmentEditor.m (-viewAction): the end
+	date/time is now also returned.
+
+	* UI/PreferencesUI/UIxPreferences.m (-vacationEndDate): return
+	current date when no end date is defined.
+
+	* Tools/SOGoToolUserPreferences.m (-run): fixed possible out of
+	bound exception when parsing arguments.
+
+2011-12-22  Francis Lachapelle  <flachapelle@inverse.ca>
+
+	* UI/Scheduler/UIxTaskEditor.m (-takeValuesFromRequest:inContext:): remove alarms
+	when no start date is defined.
+
+	* UI/WebServerResources/UIxTaskEditor.js (onTimeControlCheck):
+	disable the reminder popup menu when no start date is defined.
+
+2011-12-15  Ludovic Marcotte  <lmarcotte@inverse.ca>
+
+	* SoObjects/SOGo/SOGoSieveManager.m - slightly reworked
+	the code to use NSURL in order to instanciate the SOPE
+	Sieve code - that permits using TLS.
+
+2011-12-14  Francis Lachapelle  <flachapelle@inverse.ca>
+
+	* UI/WebServerResources/ContactsUI.js (getMenus): register the
+	function onWindowResize only if it's not already defined.
+
 2011-12-12  Wolfgang Sourdeau  <wsourdeau@inverse.ca>
 
 	* SoObjects/Appointments/iCalEvent+SOGo.m (-quickRecord): set
@@ -34,6 +1254,19 @@
 
 	* UI/WebServerResources/generic.js (parent$): handle the case
 	where window.opener is null.
+
+2011-12-08  Wolfgang Sourdeau  <wsourdeau@inverse.ca>
+
+	* OpenChange/MAPIStoreFSMessageTable.m
+	(-evaluatePropertyRestriction:intoQualifier:): interpret filtering
+	on PR_SUBJECT_UNICODE in order to include
+	PR_NORMALIZED_SUBJECT_UNICODE and PR_SUBJECT_PREFIX_UNICODE in the
+	search, as PR_SUBJECT_UNICODE might not actually exist on the FS
+	messages.
+
+	* OpenChange/MAPIStoreObject.m (-addPropertiesFromRow:): perform
+	test on PT_STRING8 alone after "masking" the ulPropTag with 0xfff,
+	since PT_XX values are not bitmasks.
 
 2011-12-06  Francis Lachapelle  <flachapelle@inverse.ca>
 
@@ -95,6 +1328,93 @@
 	* SoObjects/Appointments/iCalToDo+SOGo.m (-quickRecord):
 	-[iCalEntityObject categories] returns an NSArray that we need to
 	convert to a string for the database content.
+
+2011-12-02  Wolfgang Sourdeau  <wsourdeau@inverse.ca>
+
+	* OpenChange/MAPIStoreNotesMessage.m
+	(-getPrMessageClass:inMemCtx:): explicit method.
+	(-getPrSubject:inMemCtx:): explicit method.
+
+	* OpenChange/MAPIStoreMessage.m (-getPrAccess:inMemCtx:)
+	(-getPrAccessLevel:inMemCtx:): reimplemented methods in a generic
+	way just like the MAPIStoreFolder versions.
+
+	* OpenChange/MAPIStoreFSMessage.m (-subscriberCanModifyMessage):
+	handle the case where the message is being created.
+
+	* OpenChange/MAPIStoreFSFolder.m
+	(-messageKeysMatchingQualifier:andSortOrderings:): ensure the
+	active user can read the folder messages before returning them.
+
+2011-12-01  Wolfgang Sourdeau  <wsourdeau@inverse.ca>
+
+	* OpenChange/MAPIStoreFAIMessage.m (-subscriberCanReadMessage)
+	(-subscriberCanModifyMessage): always return "NO" for subscribers.
+
+	* OpenChange/MAPIStoreFSFolder.m: mapped role strings into
+	variables.
+
+	* OpenChange/MAPIStoreGCSMessage.m (-getPrAccess:inMemCtx:)
+	(-getPrAccessLevel:inMemCtx:): return a value based on the ACL
+	getters below.
+
+	* OpenChange/MAPIStoreFSMessage.m (-subscriberCanReadMessage):
+	returns YES when the message is of class
+	"IPM.Microsoft.ScheduleData.FreeBusy", as a hack until freebusy
+	messages are handled by the backend.
+
+	* OpenChange/MAPIStoreContext.m (_prepareContextClass): now return
+	the context via a pointer parameter. Return a proper "enum
+	mapistore_error" value.
+
+	* OpenChange/MAPIStoreCalendarMessage.m (-appointmentWrapper):
+	pass the owner user as parameter to the appointment wrapper
+	contructor rather than the active user.
+	(-save): make use of the owner user coordinates instead of the
+	ones of the active user. Handle the "sent-by" parameter for the
+	organizer element.
+
+	* OpenChange/MAPIStoreFolder.m
+	(-openMessage:withMID:forWriting:inMemCtx:): takes a new
+	"forWriting:" parameter and make use of subscriberCanModifyMessage
+	and subscriberCanReadMessage to return a proper error code, if
+	needed.
+
+	* OpenChange/MAPIStoreSOGo.m (sogo_folder_open_message): added the
+	"write_access" parameter.
+
+	* OpenChange/MAPIStoreTasksMessage.m:
+	invoke component:secure: with the secure parameter set to "YES" in
+	all accessors that requires the iCalTask object.
+
+	* OpenChange/MAPIStoreCalendarMessage.m (-appointmentWrapper):
+	invoke component:secure: with the secure parameter set to "YES".
+
+	* OpenChange/MAPIStoreTasksMessageTable.m
+	(-evaluatePropertyRestriction:intoQualifier:): return
+	MAPIRestrictionStateAlwaysTrue for PR_SENSITIVITY since privacy
+	filtering is performed internally.
+
+	* OpenChange/MAPIStoreGCSMessageTable.m (-componentQualifier):
+	removed useless accessor, left over by a previous commit.
+
+	* OpenChange/MAPIStoreGCSFolder.m (-aclQualifier): new accessor
+	providing an additional qualifier when listing elements of a
+	table, based on the current user rights.
+	(-messageKeysMatchingQualifier:andSortOrderings:): make use of the
+	new -aclQualifier method when the active user is not the owner of
+	the sogo object. Slightly simplified code by storing all
+	qualifiers in an array passed as parameter to the EOAndQualifier
+	constructor.
+
+	* OpenChange/MAPIStoreMessage.m (-subscriberCanReadMessage)
+	(-subscriberCanModifyMessage): new getters for ACL operations at
+	the message level.
+
+	* OpenChange/MAPIStoreFolder.m (-subscriberCanCreateMessages)
+	(-subscriberCanModifyMessages, -subscriberCanReadMessages)
+	(-subscriberCanDeleteMessages, -subscriberCanCreateSubFolders):
+	new getters for ACL operations at the folder level.
 
 2011-11-30  Wolfgang Sourdeau  <wsourdeau@inverse.ca>
 

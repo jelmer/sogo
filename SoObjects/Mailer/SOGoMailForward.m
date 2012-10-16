@@ -219,9 +219,7 @@
 - (NSString *) signature
 {
   NSString *signature, *mailSignature;
-  SOGoUserDefaults *ud;
 
-  ud = [[context activeUser] userDefaults];
   signature = [[sourceMail mailAccountFolder] signature];
   if ([signature length])
     mailSignature = [NSString stringWithFormat: @"-- \n%@", signature];
@@ -240,6 +238,9 @@
 @end
 
 @implementation SOGoMailCzechForward
+@end
+
+@implementation SOGoMailDanishForward
 @end
 
 @implementation SOGoMailDutchForward

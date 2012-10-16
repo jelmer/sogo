@@ -81,6 +81,19 @@ TABLE.messageList TR.thread TD
 DIV#editorTabs TABLE.frame INPUT.textField
 { margin: 0px; }
 
+INPUT.textField._invalid, INPUT.comboBoxField._invalid
+{ background: #f00 !important; }
+
+/* SchedulerUI */
+
+DIV.eventInside.tentative,
+DIV.eventInside.needs-action
+{ filter: alpha(opacity=70); }
+
+DIV.eventInside.delegated,
+DIV.eventInside.declined
+{ filter: alpha(opacity=40); }
+
 /* UIxAppointmentEditor */
 
 DIV#attendeesMenu LI.separator
@@ -213,3 +226,14 @@ TABLE#filtersList
 
 .SOGoTimePickerMenu > DIV
 { width: 310px; }
+
+/* UIx*UserRights */
+BODY.popup DIV.dialog.none
+{ left: 50%;
+  width: 350px;
+  margin-left: -175px; }
+
+/* SOGoDragHandles */
+.safetyBlock
+{  background-color: #fff;
+   filter: alpha(opacity=0); }

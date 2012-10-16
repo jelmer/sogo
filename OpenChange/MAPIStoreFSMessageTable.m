@@ -59,7 +59,7 @@ static Class MAPIStoreFSMessageK = Nil;
   NSNumber *version;
   uint64_t cVersion;
 
-  if ((uint32_t) res->ulPropTag == PR_CHANGE_NUM)
+  if ((uint32_t) res->ulPropTag == PidTagChangeNumber)
     {
       value = NSObjectFromMAPISPropValue (&res->lpProp);
       cVersion = exchange_globcnt ([value unsignedLongLongValue] >> 16);
@@ -70,6 +70,56 @@ static Class MAPIStoreFSMessageK = Nil;
                                            operatorSelector: EOQualifierOperatorGreaterThanOrEqualTo
                                                       value: version];
       [*qualifier autorelease];
+      rc = MAPIRestrictionStateNeedsEval;
+    }
+  else if ((uint32_t) res->ulPropTag == PR_SUBJECT_UNICODE)
+    {
+      EOQualifier *subjectQualifier, *nSubjectQualifier, *subjectPQualifier;
+      EOQualifier *orQualifier, *andQualifier;
+      struct mapi_SPropertyRestriction subRes;
+      char *colPtr, *prefix;
+
+      [super evaluatePropertyRestriction: res
+                           intoQualifier: &subjectQualifier];
+
+      subRes.relop = res->relop;
+      subRes.ulPropTag = PR_NORMALIZED_SUBJECT_UNICODE;
+      subRes.lpProp.ulPropTag = PR_NORMALIZED_SUBJECT_UNICODE;
+
+      colPtr = strstr (res->lpProp.value.lpszW, ":");
+      if (colPtr)
+        subRes.lpProp.value.lpszW = colPtr + 1;
+      else
+        subRes.lpProp.value.lpszW = res->lpProp.value.lpszW;
+
+      [self evaluatePropertyRestriction: &subRes
+                          intoQualifier: &nSubjectQualifier];
+      if (colPtr)
+        {
+          prefix = strndup (res->lpProp.value.lpszW, (colPtr - res->lpProp.value.lpszW));
+
+          subRes.relop = RELOP_EQ;
+          subRes.ulPropTag = PR_SUBJECT_PREFIX_UNICODE;
+          subRes.lpProp.ulPropTag = PR_SUBJECT_PREFIX_UNICODE;
+          subRes.lpProp.value.lpszW = prefix;
+          [self evaluatePropertyRestriction: &subRes
+                              intoQualifier: &subjectPQualifier];
+          free (prefix);
+
+          andQualifier = [[EOOrQualifier alloc]
+                          initWithQualifiers:
+                             subjectPQualifier, nSubjectQualifier, nil];
+          orQualifier = [[EOOrQualifier alloc]
+                          initWithQualifiers:
+                            subjectQualifier, andQualifier, nil];
+          [andQualifier release];
+        }
+      else
+        orQualifier = [[EOOrQualifier alloc]
+                          initWithQualifiers:
+                          subjectQualifier, nSubjectQualifier, nil];
+      [orQualifier autorelease];
+      *qualifier = orQualifier;
       rc = MAPIRestrictionStateNeedsEval;
     }
   else

@@ -725,16 +725,16 @@ function onViewEventCallback(http) {
 
             var paras = div.getElementsByTagName("p");
             var para = $(paras[0]);
-            if (data["calendar"].length) {
- 		// Remove owner email from calendar's name
-                para.down("SPAN", 1).update(data["calendar"].replace(/ \<.*\>/, ""));
+            if (parseInt(data["isAllDay"]) == 0) {
+                para.down("SPAN").update(data["startTime"] + " - " + data["endTime"]);
                 para.show();
             } else
                 para.hide();
 
             para = $(paras[1]);
-            if (parseInt(data["isAllDay"]) == 0) {
-                para.down("SPAN", 1).update(data["startTime"]);
+            if (data["calendar"].length) {
+ 		// Remove owner email from calendar's name
+                para.down("SPAN", 1).update(data["calendar"].replace(/ \<.*\>/, ""));
                 para.show();
             } else
                 para.hide();
@@ -2774,6 +2774,7 @@ function onCalendarRemove(event) {
             }
             else {
                 var folderUrl = ApplicationBaseURL + folderId;
+                nodes[i].deselect();
                 unsubscribeFromFolder(folderUrl, owner,
                                       onFolderUnsubscribeCB, folderId);
             }

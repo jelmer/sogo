@@ -27,7 +27,7 @@ function onLoadHandler() {
     if (!window.opener || filterId == "new") {
         setupNewFilterData();
     } else {
-        filter = window.opener.getFilterFromEditor(filterId);
+        filter = window.opener.getFilterFromEditor(filterId).evalJSON();
     }
 
     if (!window.opener || window.opener.userMailboxes) {
@@ -164,12 +164,12 @@ function onMatchTypeChange() {
 
 function onFilterRulesDivClick(event) {
     setSelectedRuleDiv(null);
-    event.stop();
+    Event.stop(event);
 }
 
 function onFilterActionsDivClick(event) {
     setSelectedActionDiv(null);
-    event.stop();
+    Event.stop(event);
 }
 
 function createFilterRule() {
@@ -182,7 +182,8 @@ function createFilterAction() {
 
 function setupNewFilterData() {
     var newFilterTemplate = $({ name: _("Untitled Filter"),
-                                match: "any" });
+                                match: "any",
+                                active: true });
     newFilterTemplate.rules = $([ createFilterRule() ]);
     newFilterTemplate.actions = $([ createFilterAction() ]);
 
@@ -234,7 +235,7 @@ function appendRule(container, rule) {
 
 function onRuleDivClick(event) {
     setSelectedRuleDiv(this);
-    event.stop();
+    Event.stop(event);
 }
 
 function setSelectedRuleDiv(newDiv) {
@@ -443,11 +444,10 @@ function ensureValueInputRepresentation(container, valueSpan) {
 }
 
 function ensureFieldValidity(input) {
-    var valid = true;
-    if (input.rule.field == "size") {
+    var valid = ensureFieldIsNotEmpty(input);
+    if (valid && input.rule.field == "size") {
         valid = ensureFieldIsNumerical(input);
-    } else
-        input.removeClassName("_invalid");
+    }
 
     return valid;
 }
@@ -456,11 +456,22 @@ function onValueInputChange(event) {
     if (ensureFieldValidity(this))
         this.rule.value = this.value;
     else
-        this.rule.value = "0";
+        this.rule.value = "";
 }
 
 function ensureFieldIsNumerical(input) {
     var valid = !isNaN(input.value);
+    if (valid) {
+        input.removeClassName("_invalid");
+    } else {
+        input.addClassName("_invalid");
+    }
+
+    return valid;
+}
+
+function ensureFieldIsNotEmpty(input) {
+    var valid = !input.value.blank();
     if (valid) {
         input.removeClassName("_invalid");
     } else {
@@ -483,7 +494,7 @@ function appendAction(container, action) {
 
 function onActionDivClick(event) {
     setSelectedActionDiv(this);
-    event.stop();
+    Event.stop(event);
 }
 
 function setSelectedActionDiv(newSpan) {
@@ -729,7 +740,7 @@ function onRuleAddClick(event) {
         setSelectedRuleDiv(newRuleDiv);
         filterRules.scrollTop = newRuleDiv.offsetTop;
     }
-    event.stop();
+    Event.stop(event);
 }
 
 function onRuleDeleteClick(event) {
@@ -743,7 +754,7 @@ function onRuleDeleteClick(event) {
         setSelectedRuleDiv(nextSelected);
     }
 
-    event.stop();
+    Event.stop(event);
 }
 
 function onActionAddClick(event) {
@@ -755,7 +766,7 @@ function onActionAddClick(event) {
         setSelectedActionDiv(newActionDiv);
         filterActions.scrollTop = newActionDiv.offsetTop;
     }
-    event.stop();
+    Event.stop(event);
 }
 
 function onActionDeleteClick(event) {
@@ -769,15 +780,39 @@ function onActionDeleteClick(event) {
         setSelectedActionDiv(nextSelected);
     }
 
-    event.stop();
+    Event.stop(event);
 }
 
-function savePreferences() {
-    if (window.opener) {
-        window.opener.updateFilterFromEditor(filterId, Object.toJSON(filter));
-    }
-    window.close();
+function savePreferences(event) {
+    var valid = true;
 
+    var rules = $$("DIV#filterRules DIV.rule");
+    if (rules.length == 0) {
+        onRuleAddClick(event);
+        valid = false;
+    }
+
+    var actions = $$("DIV#filterActions DIV.action");
+    if (actions.length == 0) {
+        onActionAddClick(event);        
+        valid = false;
+    }
+
+    if (valid) {
+        var inputs = $$("DIV#filterRules input");
+        inputs.each(function(input) {
+                if (input.hasClassName("_invalid"))
+                    valid = false;
+            });
+    }
+
+    if (valid) {
+        if (window.opener) {
+            window.opener.updateFilterFromEditor(filterId, Object.toJSON(filter));
+        }
+        window.close();
+    }
+    
     return false;
 }
 

@@ -288,12 +288,12 @@ static int cssEscapingCount;
   int count;
 
   strings = [NSArray arrayWithObjects: @"_U_", @"_D_", @"_H_", @"_A_", @"_S_",
-                     @"_C_", @"_CO_", @"_SP_", @"_SQ_", @"_AM_", nil];
+                     @"_C_", @"_CO_", @"_SP_", @"_SQ_", @"_AM_", @"_P_", nil];
   [strings retain];
   cssEscapingStrings = [strings asPointersOfObjects];
 
   characters = [NSArray arrayWithObjects: @"_", @".", @"#", @"@", @"*", @":",
-                        @",", @" ", @"'", @"&", nil];
+                        @",", @" ", @"'", @"&", @"+", nil];
   cssEscapingCount = [strings count];
   cssEscapingCharacters = NSZoneMalloc (NULL,
                                         (cssEscapingCount + 1)
@@ -484,44 +484,6 @@ static int cssEscapingCount;
     time = -1;
   
   return time;
-}
-
-static NSMutableCharacterSet *safeLDIFChars = nil;
-static NSMutableCharacterSet *safeLDIFStartChars = nil;
-
-- (void) _initSafeLDIFChars
-{
-  safeLDIFChars = [NSMutableCharacterSet new];
-  [safeLDIFChars addCharactersInRange: NSMakeRange (0x01, 9)];
-  [safeLDIFChars addCharactersInRange: NSMakeRange (0x0b, 2)];
-  [safeLDIFChars addCharactersInRange: NSMakeRange (0x0e, 114)];
-
-  safeLDIFStartChars = [safeLDIFChars mutableCopy];
-  [safeLDIFStartChars removeCharactersInString: @" :<"];
-}
-
-- (BOOL) _isLDIFSafe
-{
-  int count, max;
-  BOOL rc;
-
-  if (!safeLDIFChars)
-    [self _initSafeLDIFChars];
-
-  rc = YES;
-
-  max = [self length];
-  if (max > 0)
-    {
-      if ([safeLDIFStartChars characterIsMember: [self characterAtIndex: 0]])
-        for (count = 1; rc && count < max; count++)
-          rc = [safeLDIFChars
-                 characterIsMember: [self characterAtIndex: count]];
-      else
-        rc = NO;
-    }
-  
-  return rc;
 }
 
 - (BOOL) isJSONString

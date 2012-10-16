@@ -19,6 +19,7 @@
 "Attach" = "Вкладення";
 "Save" = "Зберегти";
 "Options" = "Налаштування";
+"Close" = "Закрити";
 "Size" = "Розмір";
 
 /* Tooltips */
@@ -63,8 +64,10 @@
 "Shared Account: " = "Спільний обліковий запис: ";
 
 /* acls */
-"Default Roles" = "Ролі за замовчанням";
-"User rights for:" = "Права доступу для:";
+"Access rights to" = "Права доступу до";
+"For user" = "Для користувача";
+
+"Any Authenticated User" = "Для будь-якого авторизованого користувача";
 
 "List and see this folder" = "Бачити теку та назву листів в ній";
 "Read mails from this folder" = "Читати листи в теці";
@@ -104,8 +107,6 @@
 "cc"            = "Копія";
 "bcc"           = "Прихована копія";
 
-"Addressbook"   = "Адресна книга";
-
 "Edit Draft..." = "Редагувати чернетку...";
 "Load Images" = "Завантажити зображення";
 
@@ -122,6 +123,9 @@
 "lowest" = "Найнижча";
 
 "This mail is being sent from an unsecure network!" = "Це повідомлення надсилається з небезпечної мережі!";
+
+"Address Book:" = "Адресна книга:";
+"Search For:" = "Шукати:";
 
 /* Popup "show" */
 
@@ -141,7 +145,6 @@
 "Date"          = "Дата";
 "View"          = "Перегляд";
 "All"           = "Всі";
-"Unread"        = "Непрочитані";
 "No message"    = "Повідомлення відсутні";
 "messages"      = "повідомлення";
 
@@ -208,7 +211,6 @@
 "Open Message In New Window" = "Відкрити повідомлення в новому вікні";
 "Reply to Sender Only" = "Відповісти відправнику";
 "Reply to All" = "Відповісти відправнику та всім адресатам";
-"Forward" = "Переслати";
 "Edit As New..." = "Редагувати як нове...";
 "Move To" = "Перемістити у";
 "Copy To" = "Копіювати в";
@@ -278,7 +280,7 @@
 
 /* Message operations */
 "The messages could not be moved to the trash folder. Would you like to delete them immediately?"
-= "The messages could not be moved to the trash folder. Would you like to delete them immediately?";
+= "Неможливо перемістити повідомлення до кошику. ";
 
 /* Message editing */
 "error_validationfailed" = "Перевірка зазнала невдачі";

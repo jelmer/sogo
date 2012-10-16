@@ -20,7 +20,11 @@
  * Boston, MA 02111-1307, USA.
  */
 
+#import <Foundation/NSDictionary.h>
+
 #import "MAPIStoreTypes.h"
+#import "NSObject+MAPIStore.h"
+#import "NSString+MAPIStore.h"
 
 #import "MAPIStoreNotesMessage.h"
 
@@ -28,8 +32,8 @@
 
 @implementation MAPIStoreNotesMessage
 
-- (int) getPrIconIndex: (void **) data // TODO
-              inMemCtx: (TALLOC_CTX *) memCtx
+- (int) getPidTagIconIndex: (void **) data // TODO
+                  inMemCtx: (TALLOC_CTX *) memCtx
 {
   /* see http://msdn.microsoft.com/en-us/library/cc815472.aspx */
   // *longValue = 0x00000300 for blue
@@ -42,12 +46,28 @@
   return MAPISTORE_SUCCESS;
 }
 
-- (int) getPrSubject: (void **) data
-            inMemCtx: (TALLOC_CTX *) memCtx
+- (int) getPidTagMessageClass: (void **) data inMemCtx: (TALLOC_CTX *) memCtx
 {
-  return [self getProperty: data
-                   withTag: PR_NORMALIZED_SUBJECT_UNICODE
-                  inMemCtx: memCtx];
+  *data = [@"IPM.StickyNote" asUnicodeInMemCtx: memCtx];
+
+  return MAPISTORE_SUCCESS;
+}
+
+- (int) getPidTagSubject: (void **) data
+                inMemCtx: (TALLOC_CTX *) memCtx
+{
+  id value;
+  int rc;
+ 
+  value = [[sogoObject properties]
+            objectForKey: MAPIPropertyKey (PidTagNormalizedSubject)];
+  if (value)
+    rc = [value getValue: data forTag: PidTagNormalizedSubject
+                inMemCtx: memCtx];
+  else
+    rc = MAPISTORE_ERR_NOT_FOUND;
+
+  return rc;
 }
 
 @end

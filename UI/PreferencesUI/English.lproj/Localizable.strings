@@ -30,6 +30,7 @@
 "Disable auto reply on" = "Disable auto reply on";
 "Please specify your message and your email addresses for which you want to enable auto reply."
 = "Please specify your message and your email addresses for which you want to enable auto reply.";
+"Your vacation message must not end with a single dot on a line." = "Your vacation message must not end with a single dot on a line.";
 "End date of your auto reply must be in the future."
 = "End date of your auto reply must be in the future.";
 
@@ -86,6 +87,7 @@
 "timeFmt_1" = "%H:%M";
 "timeFmt_2" = "";
 "timeFmt_3" = "";
+"timeFmt_4" = "";
 
 /* calendar */
 "Week begins on :" = "Week begins on :";
@@ -172,6 +174,13 @@
 "Confirmation:" = "Confirmation:";
 "Change" = "Change";
 
+/* Event+task classifications */
+"Default events classification :" = "Default events classification :";
+"Default tasks classification :" = "Default tasks classification :";
+"PUBLIC_item" = "Public";
+"CONFIDENTIAL_item" = "Confidential";
+"PRIVATE_item" = "Private";
+
 /* Event+task categories */
 "category_none" = "None";
 "calendar_category_labels" = "Anniversary,Birthday,Business,Calls,Clients,Competition,Customer,Favorites,Follow up,Gifts,Holidays,Ideas,Meeting,Issues,Miscellaneous,Personal,Projects,Public Holiday,Status,Suppliers,Travel,Vacation";
@@ -187,7 +196,7 @@
 "choose" = "Choose ...";
 "Catalan" = "Català";
 "Czech" = "Česky";
-"DanishDenmark" = "Dansk (Danmark)";
+"Danish" = "Dansk (Danmark)";
 "Dutch" = "Nederlands";
 "English" = "English";
 "French" = "Français";
@@ -203,18 +212,6 @@
 "Swedish" = "Svenska";
 "Ukrainian" = "Українська";
 "Welsh" = "Cymraeg";
-
-/* Return receipts */
-"When I receive a request for a return receipt:" = "When I receive a request for a return receipt:";
-"Never send a return receipt" = "Never send a return receipt";
-"Allow return receipts for some messages" = "Allow return receipts for some messages";
-"If I'm not in the To or Cc of the message:" = "If I'm not in the To or Cc of the message:";
-"If the sender is outside my domain:" = "If the sender is outside my domain:";
-"In all other cases:" = "In all other cases:";
-
-"Never send" = "Never send";
-"Always send" = "Always send";
-"Ask me" = "Ask me";
 
 /* Return receipts */
 "When I receive a request for a return receipt:" = "When I receive a request for a return receipt:";
@@ -293,5 +290,3 @@
 "Unhandled error response" = "Unhandled error response";
 "Password change is not supported." = "Password change is not supported.";
 "Unhandled HTTP error code: %{0}" = "Unhandled HTTP error code: %{0}";
-"New password:" = "New password:";
-"Confirmation:" = "Confirmation:";

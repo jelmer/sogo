@@ -39,10 +39,7 @@
   SOGoMAPIFSMessage *versionsMessage;
 }
 
-/* subclasses */
-- (SOGoMailFolder *) specialFolderFromAccount: (SOGoMailAccount *) account
-                                    inContext: (WOContext *) woContext;
-
+- (BOOL) ensureFolderExists;
 
 /* synchronisation & versioning */
 - (BOOL) synchroniseCache;
@@ -56,22 +53,8 @@
 
 @end
 
-@interface MAPIStoreInboxFolder : MAPIStoreMailFolder
-{
-  BOOL usesAltNameSpace;
-}
-
-@end
-
-@interface MAPIStoreSentItemsFolder : MAPIStoreMailFolder
-@end
-
-@interface MAPIStoreDraftsFolder : MAPIStoreMailFolder
-@end
-
-// @interface MAPIStoreDeletedItemsFolder : MAPIStoreFFolder
-// @end
-
+/* MAPIStoreOutboxFolder is a special subclass of MAPIStoreMailFolder where
+   the displayname is always "Outbox" and can not be changed. */
 @interface MAPIStoreOutboxFolder : MAPIStoreMailFolder
 @end
 

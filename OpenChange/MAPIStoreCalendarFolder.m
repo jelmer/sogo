@@ -24,6 +24,7 @@
 #import <Foundation/NSString.h>
 #import <Foundation/NSURL.h>
 #import <NGObjWeb/WOContext+SoObjects.h>
+#import <NGExtensions/NSObject+Logs.h>
 #import <EOControl/EOQualifier.h>
 #import <SOGo/SOGoPermissions.h>
 #import <Appointments/SOGoAppointmentFolder.h>
@@ -34,44 +35,15 @@
 #import "MAPIStoreCalendarContext.h"
 #import "MAPIStoreCalendarMessage.h"
 #import "MAPIStoreCalendarMessageTable.h"
+#import "NSString+MAPIStore.h"
 
 #import "MAPIStoreCalendarFolder.h"
 
+#include <mapistore/mapistore_errors.h>
 #include <util/time.h>
 #include <gen_ndr/exchange.h>
 
 @implementation MAPIStoreCalendarFolder
-
-- (id) initWithURL: (NSURL *) newURL
-         inContext: (MAPIStoreContext *) newContext
-{
-  SOGoUserFolder *userFolder;
-  SOGoAppointmentFolders *parentFolder;
-  WOContext *woContext;
-
-  if ((self = [super initWithURL: newURL
-                       inContext: newContext]))
-    {
-      woContext = [newContext woContext];
-      userFolder = [SOGoUserFolder objectWithName: [newURL user]
-                                      inContainer: MAPIApp];
-      [parentContainersBag addObject: userFolder];
-      [woContext setClientObject: userFolder];
-
-      parentFolder = [userFolder lookupName: @"Calendar"
-                                  inContext: woContext
-                                    acquire: NO];
-      [parentContainersBag addObject: parentFolder];
-      [woContext setClientObject: parentFolder];
-      
-      sogoObject = [parentFolder lookupName: @"personal"
-                                  inContext: woContext
-                                    acquire: NO];
-      [sogoObject retain];
-    }
-
-  return self;
-}
 
 - (MAPIStoreMessageTable *) messageTable
 {
@@ -79,17 +51,9 @@
   return [MAPIStoreCalendarMessageTable tableForContainer: self];
 }
 
-- (EOQualifier *) componentQualifier
+- (NSString *) component
 {
-  static EOQualifier *componentQualifier = nil;
-
-  if (!componentQualifier)
-    componentQualifier
-      = [[EOKeyValueQualifier alloc] initWithKey: @"c_component"
-				operatorSelector: EOQualifierOperatorEqual
-					   value: @"vevent"];
-
-  return componentQualifier;
+  return @"vevent";
 }
 
 - (MAPIStoreMessage *) createMessage
@@ -132,6 +96,8 @@
       [roles addObject: SOGoCalendarRole_ConfidentialViewer];
     }
 
+  // [self logWithFormat: @"roles for rights %.8x = (%@)", rights, roles];
+
   return roles;
 }
 
@@ -150,11 +116,60 @@
   else if ([roles containsObject: SOGoCalendarRole_PublicViewer]
            && [roles containsObject: SOGoCalendarRole_PrivateViewer]
            && [roles containsObject: SOGoCalendarRole_ConfidentialViewer])
-    rights |= RightsReadItems;
+    rights |= RightsReadItems | 0x1800;
   if (rights != 0)
     rights |= RoleNone; /* actually "folder visible" */
+
+  // [self logWithFormat: @"rights for roles (%@) = %.8x", roles, rights];
  
   return rights;
+}
+
+- (BOOL) subscriberCanReadMessages
+{
+  static NSArray *viewerRoles = nil;
+
+  if (!viewerRoles)
+    viewerRoles = [[NSArray alloc] initWithObjects:
+                                     SOGoCalendarRole_PublicViewer,
+                                   SOGoCalendarRole_PublicDAndTViewer,
+                                   SOGoCalendarRole_PrivateViewer,
+                                   SOGoCalendarRole_PrivateDAndTViewer,
+                                   SOGoCalendarRole_ConfidentialViewer,
+                                   SOGoCalendarRole_ConfidentialDAndTViewer,
+                                   nil];
+
+  return ([[self activeUserRoles] firstObjectCommonWithArray: viewerRoles]
+          != nil);
+}
+
+- (BOOL) subscriberCanModifyMessages
+{
+  static NSArray *modifierRoles = nil;
+
+  if (!modifierRoles)
+    modifierRoles = [[NSArray alloc] initWithObjects:
+                                       SOGoCalendarRole_PublicModifier,
+                                     SOGoCalendarRole_PrivateModifier,
+                                     SOGoCalendarRole_ConfidentialModifier,
+                                     nil];
+
+  return ([[self activeUserRoles] firstObjectCommonWithArray: modifierRoles]
+          != nil);
+}
+
+- (EOQualifier *) aclQualifier
+{
+  return [EOQualifier qualifierWithQualifierFormat:
+            [(SOGoAppointmentFolder *) sogoObject aclSQLListingFilter]];
+}
+
+- (int) getPidTagDefaultPostMessageClass: (void **) data
+                                inMemCtx: (TALLOC_CTX *) memCtx
+{
+  *data = [@"IPM.Appointment" asUnicodeInMemCtx: memCtx];
+
+  return MAPISTORE_SUCCESS;
 }
 
 @end

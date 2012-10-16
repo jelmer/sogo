@@ -234,7 +234,7 @@
   [currentPassword release];
   [cn release];
   [loginInDomain release];
-  [language release];
+  //[language release];
   [super dealloc];
 }
 
@@ -285,6 +285,17 @@
 - (NSString *) domain
 {
   return [self _fetchFieldForUser: @"c_domain"];
+}
+
+- (id <SOGoSource>) authenticationSource
+{
+  NSString *sourceID;
+  SOGoUserManager *um;
+
+  sourceID = [self _fetchFieldForUser: @"SOGoSource"];
+  um = [SOGoUserManager sharedUserManager];
+
+  return [um sourceWithID: sourceID];
 }
 
 - (NSArray *) allEmails
@@ -389,7 +400,7 @@
           _domainDefaults = [SOGoDomainDefaults defaultsForDomain: domain];
           if (!_domainDefaults)
             {
-              [self errorWithFormat: @"domain '%@' does not exist!", domain];
+              //[self errorWithFormat: @"domain '%@' does not exist!", domain];
               _domainDefaults = [SOGoSystemDefaults sharedSystemDefaults];
             }
         }

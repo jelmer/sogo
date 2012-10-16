@@ -25,7 +25,7 @@ function onContactAdd(button) {
     }
 
     $("hiddenDragHandle").adjust();
-    onMailEditorResize(null);
+    onWindowResize(null);
 }
 
 function addContact(tag, fullContactName, contactId, contactName, contactEmail) {
@@ -56,7 +56,7 @@ function addContact(tag, fullContactName, contactId, contactName, contactEmail) 
             var select = $(td.childNodesWithTag("select")[0]);
             select.value = neededOptionValue;
             insertContact($("addr_" + currentIndex), contactName, contactEmail);
-            onMailEditorResize(null);
+            onWindowResize(null);
         }
     }
 }
@@ -212,7 +212,7 @@ function clickedEditorAttach() {
 
         if (!area.style.display) {
             area.setStyle({ display: "block" });
-            onMailEditorResize(null);
+            onWindowResize(null);
         }
         var inputs = area.getElementsByTagName("input");
         var attachmentName = "attachment" + attachmentCount;
@@ -360,15 +360,16 @@ function initAddresses() {
         });
 }
 
-/* Overwrites function of MailerUI.js */
+/* Overwrite function of MailerUI.js */
 function configureDragHandle() {
     var handle = $("hiddenDragHandle");
     if (handle) {
         handle.addInterface(SOGoDragHandlesInterface);
-        handle.leftMargin = 100;
-        handle.leftBlock=$("leftPanel");
-        handle.rightBlock=$("rightPanel");
-        handle.observe("handle:dragged", onMailEditorResize);
+        handle.leftMargin = 135; // minimum width
+        handle.leftBlock = $("leftPanel");
+        handle.rightBlock = $("rightPanel");
+        handle.enableRightSafety();
+        handle.observe("handle:dragged", onWindowResize);
     }
 }
 
@@ -424,7 +425,7 @@ function initMailEditor() {
                                'BulletedList', '-', 'Link', 'Unlink', 'Image', 
                                'JustifyLeft','JustifyCenter','JustifyRight',
                                'JustifyBlock','Font','FontSize','-','TextColor',
-                               'BGColor','-','SpellChecker']
+                               'BGColor','-','SpellChecker','Scayt']
                              ],
                              language : localeCode,
 			     scayt_sLang : localeCode
@@ -436,11 +437,10 @@ function initMailEditor() {
 
     $("contactFolder").observe("change", onContactFolderChange);
     
-    
-    Event.observe(window, "resize", onMailEditorResize);
+    Event.observe(window, "resize", onWindowResize);
     Event.observe(window, "beforeunload", onMailEditorClose);
     
-    onMailEditorResize.defer();
+    onWindowResize.defer();
 }
 
 function focusCKEditor(event) {
@@ -513,12 +513,7 @@ function onRemoveAttachments() {
             list.removeChild(nodes[i]);
         }
         else {
-            var filename = "";
-            var childNodes = nodes[i].childNodes;
-            for (var j = 0; j < childNodes.length; j++) {
-                if (childNodes[j].nodeType == 3)
-                    filename += childNodes[j].nodeValue;
-            }
+            var filename = nodes[i].title;
             var url = "" + window.location;
             var parts = url.split("/");
             parts[parts.length-1] = "deleteAttachment?filename=" + encodeURIComponent(filename);
@@ -584,7 +579,7 @@ function onSelectOptions(event) {
     }
 }
 
-function onMailEditorResize(event) {
+function onWindowResize(event) {
     if (!document.pageform)
       return;
     var textarea = document.pageform.text;
@@ -627,30 +622,19 @@ function onMailEditorResize(event) {
     textarea.setStyle({ 'top': hr.offsetTop + 'px' });
 
     // Resize the textarea (message content)
+    var offsetTop = $('rightPanel').offsetTop + headerarea.getHeight();
     var composeMode = UserDefaults["SOGoMailComposeMessageType"];
     if (composeMode == "html") {
         var editor = $('cke_text');
         if (editor == null) {
-            onMailEditorResize.defer();
+            onWindowResize.defer();
             return;
         }
-        var ck_top = $("cke_top_text");
-        var ck_bottom = $("cke_bottom_text");
-        var content = $("cke_contents_text");
-        var top = hr.offsetTop;
-        var height = Math.floor(window.height() - top - ck_top.getHeight() - ck_bottom.getHeight());
-        height = height - 15;
-        
-        if (Prototype.Browser.IE) {
-            editor.style.width = '';
-            editor.style.height = '';
-        }
-
-        editor.setStyle({ top: (top + 2) + 'px' });
-        content.setStyle({ height: height + 'px' });
+        var height = window.height() - offsetTop;
+        CKEDITOR.instances["text"].resize('100%', height);
     }
     else
-        textarea.rows = Math.floor((window.height() - textarea.offsetTop) / rowheight);
+        textarea.rows = Math.floor((window.height() - offsetTop) / rowheight);
 
     // Resize search contacts addressbook selector
     if ($("contacts").visible())

@@ -24,7 +24,7 @@ var Mailer = {
     sortByThread: false
 };
 
-var usersRightsWindowHeight = 320;
+var usersRightsWindowHeight = 335;
 var usersRightsWindowWidth = 400;
 
 var pageContent = $("pageContent");
@@ -855,7 +855,7 @@ function openMailbox(mailbox, reload) {
 
         Mailer.currentMailbox = mailbox;
 
-        if (!getUnseenCountForAllFolders && Mailer.unseenCountMailboxes.indexOf(mailbox) == -1) {
+        if (Mailer.unseenCountMailboxes.indexOf(mailbox) == -1) {
             Mailer.unseenCountMailboxes.push(mailbox);
         }
 
@@ -1900,7 +1900,7 @@ function configureDragHandles() {
         handle.addInterface(SOGoDragHandlesInterface);
         handle.upperBlock=$("mailboxContent");
         handle.lowerBlock=$("messageContent");
-        handle.upperBlock.observe("handle:resize", onMessageListResize);
+        handle.observe("handle:dragged", onMessageListResize);
     }
 }
 
@@ -1910,7 +1910,6 @@ function onMessageListResize(event) {
 }
 
 function onWindowResize(event) {
-    log ("resize mailer");
     var handle = $("verticalDragHandle");
     if (handle)
         handle.adjust();
@@ -2049,10 +2048,9 @@ function initMailboxTreeCB() {
     checkAjaxRequestsState();
     getFoldersState();
     configureDroppables();
-    if (getUnseenCountForAllFolders) {
-        for (var i = 0; i < mailboxTree.aNodes.length; i++) {
-            var mailboxPath = mailboxTree.aNodes[i].dataname;
-            Mailer.unseenCountMailboxes.push(mailboxPath);
+    if (unseenCountFolders.length > 0) {
+        for (var i = 0; i < unseenCountFolders.length; i++) {
+            Mailer.unseenCountMailboxes.push(unseenCountFolders[i]);
         }
         refreshUnseenCounts();
     }
@@ -2743,8 +2741,6 @@ function onMenuArchiveFolder(event) {
     var folderID = document.menuTarget.getAttribute("dataname");
     var url = URLForFolderID(folderID) + "/exportFolder";
     window.location.href = url;
-
-    event.stop();
 }
 
 function onMenuAccountDelegation(event) {
@@ -2774,7 +2770,7 @@ function getMenus() {
                            "folderTypeMenu",
                            "-", null,
                            onMenuSharing ],
-        addressMenu: [ newContactFromEmail, newEmailTo, null ],
+        addressMenu: [ newContactFromEmail, newEmailTo ],
         messageListMenu: [ onMenuOpenMessage, "-",
                            onMenuReplyToSender,
                            onMenuReplyToAll,
@@ -2930,7 +2926,7 @@ function configureDraggables() {
                     onEnd: stopDragging,
                     onDrag: whileDragging,
                     scroll: "folderTreeContent",
-                    delay: 100 });
+                    delay: 250 });
 }
 
 function configureDroppables() {
@@ -2959,9 +2955,13 @@ function configureDroppables() {
 }
 
 function startDragging (itm, e) {
+    if (!Event.isLeftClick(e))
+        return;
     var target = Event.element(e);
     if (target.up('TBODY') == undefined)
         return;
+
+    $("mailboxList").setStyle({ overflow: "visible" });
 
     var row = target.up('TR');
     var handle = $("dragDropVisual");
@@ -2998,7 +2998,8 @@ function whileDragging (itm, e) {
     }
 }
 
-function stopDragging () {
+function stopDragging() {
+    $("mailboxList").setStyle({ overflow: "auto", overflowX: "hidden" });
     var handle = $("dragDropVisual");
     handle.hide();
     if (handle.hasClassName("copy"))

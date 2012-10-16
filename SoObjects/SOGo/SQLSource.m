@@ -1,6 +1,6 @@
 /* SQLSource.h - this file is part of SOGo
  *
- * Copyright (C) 2009-2011 Inverse inc.
+ * Copyright (C) 2009-2012 Inverse inc.
  *
  * Authors: Ludovic Marcotte <lmarcotte@inverse.ca>
  *          Francis Lachapelle <flachapelle@inverse.ca>
@@ -22,8 +22,9 @@
  */
 
 #import <Foundation/NSArray.h>
-#import <Foundation/NSObject.h>
 #import <Foundation/NSDictionary.h>
+#import <Foundation/NSException.h>
+#import <Foundation/NSObject.h>
 #import <Foundation/NSString.h>
 #import <Foundation/NSValue.h>
 #import <Foundation/NSURL.h>
@@ -58,7 +59,7 @@
  *  {   
  *    id = zot;
  *    type = sql;
- *    viewURL = "http://sogo:sogo@127.0.0.1:5432/sogo/sogo_view";
+ *    viewURL = "mysql://sogo:sogo@127.0.0.1:5432/sogo/sogo_view";
  *    canAuthenticate = YES;
  *    isAddressBook = YES;
  *    userPasswordAlgorithm = md5;
@@ -80,6 +81,7 @@
   if ((self = [super init]))
     {
       _sourceID = nil;
+      _domainField = nil;
       _authenticationFilter = nil;
       _loginFields = nil;
       _mailFields = nil;
@@ -87,6 +89,7 @@
       _viewURL = nil;
       _kindField = nil;
       _multipleBookingsField = nil;
+      _imapHostField = nil;
     }
 
   return self;
@@ -102,6 +105,8 @@
   [_viewURL release];
   [_kindField release];
   [_multipleBookingsField release];
+  [_domainField release];
+  [_imapHostField release];
    
   [super dealloc];
 }
@@ -117,8 +122,10 @@
   ASSIGN(_mailFields, [udSource objectForKey: @"MailFieldNames"]);
   ASSIGN(_userPasswordAlgorithm, [udSource objectForKey: @"userPasswordAlgorithm"]);
   ASSIGN(_imapLoginField, [udSource objectForKey: @"IMAPLoginFieldName"]);
+  ASSIGN(_imapHostField, [udSource objectForKey:  @"IMAPHostFieldName"]);
   ASSIGN(_kindField, [udSource objectForKey: @"KindFieldName"]);
   ASSIGN(_multipleBookingsField, [udSource objectForKey: @"MultipleBookingsFieldName"]);
+  ASSIGN(_domainField, [udSource objectForKey: @"DomainFieldName"]);
   
   if (!_userPasswordAlgorithm)
     _userPasswordAlgorithm = @"none";
@@ -376,11 +383,13 @@
 
 - (NSDictionary *) _lookupContactEntry: (NSString *) theID
                          considerEmail: (BOOL) b
+                              inDomain: (NSString *) domain
 {
   NSMutableDictionary *response;
   NSMutableArray *qualifiers;
+  NSArray *fieldNames;
   EOAdaptorChannel *channel;
-  EOQualifier *loginQualifier, *qualifier;
+  EOQualifier *loginQualifier, *domainQualifier, *qualifier;
   GCSChannelManager *cm;
   NSMutableString *sql;
   NSString *value, *field;
@@ -419,6 +428,15 @@
             }
         }
       
+      domainQualifier = nil;
+      if (_domainField && domain)
+        {
+          domainQualifier = [[EOKeyValueQualifier alloc] initWithKey: _domainField
+                                                    operatorSelector: EOQualifierOperatorEqual
+                                                               value: domain];
+          [domainQualifier autorelease];
+        }
+
       if (b)
         {
           // Always compare againts the mail field
@@ -451,6 +469,8 @@
                              @" WHERE ",
                              [_viewURL gcsTableName]];
       qualifier = [[EOOrQualifier alloc] initWithQualifierArray: qualifiers];
+      if (domainQualifier)
+        qualifier = [[EOAndQualifier alloc] initWithQualifiers: domainQualifier, qualifier, nil];
       [qualifier _gcsAppendToString: sql];
 
       ex = [channel evaluateExpressionX: sql];
@@ -463,15 +483,28 @@
           [response autorelease];
 	  [channel cancelFetch];
 
+          /* Convert all c_ fields to obtain their ldif equivalent */
+          fieldNames = [response allKeys];
+          for (i = 0; i < [fieldNames count]; i++)
+            {
+              field = [fieldNames objectAtIndex: i];
+              if ([field hasPrefix: @"c_"])
+                [response setObject: [response objectForKey: field]
+                             forKey: [field substringFromIndex: 2]];
+            }
+
           // We have to do this here since we do not manage modules
           // constraints right now over a SQL backend.
           [response setObject: [NSNumber numberWithBool: YES] forKey: @"CalendarAccess"];
           [response setObject: [NSNumber numberWithBool: YES] forKey: @"MailAccess"];
 
 	  // We set the domain, if any
+          value = nil;
 	  if (_domain)
 	    value = _domain;
-	  else
+	  else if (_domainField)
+            value = [response objectForKey: _domainField];
+          if (![value isNotNull])
 	    value = @"";
 	  [response setObject: value forKey: @"c_domain"];
 
@@ -487,11 +520,18 @@
 	      int i;
 
 	      for (i = 0; i < [_mailFields count]; i++)
-		if ((s = [response objectForKey: [_mailFields objectAtIndex: i]]))
+		if ((s = [response objectForKey: [_mailFields objectAtIndex: i]]) &&
+		    [[s stringByTrimmingSpaces] length] > 0)
 		  [emails addObject: s];
 	    }
 	  
 	  [response setObject: emails  forKey: @"c_emails"];
+          if (_imapHostField)
+            {
+              value = [response objectForKey: _imapHostField];
+              if ([value isNotNull])
+                [response setObject: value forKey: @"c_imaphostname"];
+            }
 
           // We check if the user can authenticate
           if (_authenticationFilter)
@@ -539,7 +579,7 @@
 	  // We check if it's a resource of not
 	  if (_kindField)
 	    {	      
-	      if ((value = [response objectForKey: _kindField]))
+	      if ((value = [response objectForKey: _kindField]) && [value isNotNull])
 		{
 		  if ([value caseInsensitiveCompare: @"location"] == NSOrderedSame ||
 		      [value caseInsensitiveCompare: @"thing"] == NSOrderedSame ||
@@ -559,6 +599,8 @@
 			    forKey: @"numberOfSimultaneousBookings"];
 		}
 	    }
+
+          [response setObject: self forKey: @"source"];
         }
       else
         [self errorWithFormat: @"could not run SQL '%@': %@", sql, ex];
@@ -574,12 +616,13 @@
 
 - (NSDictionary *) lookupContactEntry: (NSString *) theID
 {
-  return [self _lookupContactEntry: theID  considerEmail: NO];
+  return [self _lookupContactEntry: theID  considerEmail: NO inDomain: nil];
 }
 
 - (NSDictionary *) lookupContactEntryWithUIDorEmail: (NSString *) entryID
+                                           inDomain: (NSString *) domain
 {
-  return [self _lookupContactEntry: entryID  considerEmail: YES];
+  return [self _lookupContactEntry: entryID  considerEmail: YES inDomain: domain];
 }
 
 - (NSArray *) allEntryIDs
@@ -628,12 +671,14 @@
 }
 
 - (NSArray *) fetchContactsMatching: (NSString *) filter
+                           inDomain: (NSString *) domain
 {
   EOAdaptorChannel *channel;
   NSMutableArray *results;
   GCSChannelManager *cm;
   NSException *ex;
-  NSString *sql, *lowerFilter;
+  NSMutableString *sql;
+  NSString *lowerFilter;
   
   results = [NSMutableArray array];
 
@@ -644,17 +689,28 @@
       lowerFilter = [filter lowercaseString];
       lowerFilter = [lowerFilter stringByReplacingString: @"'"  withString: @"''"];
 
-      sql = [NSString stringWithFormat: (@"SELECT *"
+      sql = [NSMutableString stringWithFormat: (@"SELECT *"
                                          @" FROM %@"
-                                         @" WHERE LOWER(c_cn) LIKE '%%%@%%'"
-                                         @"    OR LOWER(mail) LIKE '%%%@%%'"),
+                                         @" WHERE"
+                                         @" (LOWER(c_cn) LIKE '%%%@%%'"
+                                         @" OR LOWER(mail) LIKE '%%%@%%'"),
                       [_viewURL gcsTableName],
                       lowerFilter, lowerFilter];
-
+      
       if (_mailFields && [_mailFields count] > 0)
 	{
-	  sql = [sql stringByAppendingString: [self _whereClauseFromArray: _mailFields  value: lowerFilter  exact: NO]];
+	  [sql appendString: [self _whereClauseFromArray: _mailFields  value: lowerFilter  exact: NO]];
 	}
+
+      [sql appendString: @")"];
+
+      if (_domainField)
+        {
+          if ([domain length])
+            [sql appendFormat: @" AND %@ = '%@'", _domainField, domain];
+          else
+            [sql appendFormat: @" AND %@ IS NULL", _domainField];
+        }
 
       ex = [channel evaluateExpressionX: sql];
       if (!ex)
@@ -665,7 +721,12 @@
           attrs = [channel describeResults: NO];
 
           while ((row = [channel fetchAttributes: attrs withZone: NULL]))
-            [results addObject: row];
+            {
+              row = [row mutableCopy];
+              [(NSMutableDictionary *) row setObject: self forKey: @"source"];
+              [results addObject: row];
+              [row release];
+            }
         }
       else
         [self errorWithFormat: @"could not run SQL '%@': %@", sql, ex];
@@ -678,9 +739,142 @@
   return results;
 }
 
+- (void) setSourceID: (NSString *) newSourceID
+{
+}
+
 - (NSString *) sourceID
 {
   return _sourceID;
+}
+
+- (void) setDisplayName: (NSString *) newDisplayName
+{
+}
+
+- (NSString *) displayName
+{
+  /* This method is only used when supporting user "source" addressbooks,
+     which is only supported by the LDAP backend for now. */
+  return _sourceID;
+}
+
+- (void) setListRequiresDot: (BOOL) newListRequiresDot
+{
+}
+
+- (BOOL) listRequiresDot
+{
+  /* This method is not implemented for SQLSource. It must enable a mechanism
+     where using "." is not required to list the content of addressbooks. */
+  return YES;
+}
+
+/* card editing */
+- (void) setModifiers: (NSArray *) newModifiers
+{
+}
+
+- (NSArray *) modifiers
+{
+  /* This method is only used when supporting card editing,
+     which is only supported by the LDAP backend for now. */
+  return nil;
+}
+
+- (NSException *) addContactEntry: (NSDictionary *) roLdifRecord
+                           withID: (NSString *) aId
+{
+  NSString *reason;
+
+  reason = [NSString stringWithFormat: @"method '%@' is not available"
+                     @" for class '%@'", NSStringFromSelector (_cmd),
+                     NSStringFromClass (isa)];
+
+  return [NSException exceptionWithName: @"SQLSourceIOException"
+                                 reason: reason
+                               userInfo: nil];
+}
+
+- (NSException *) updateContactEntry: (NSDictionary *) roLdifRecord
+{
+  NSString *reason;
+
+  reason = [NSString stringWithFormat: @"method '%@' is not available"
+                     @" for class '%@'", NSStringFromSelector (_cmd),
+                     NSStringFromClass (isa)];
+
+  return [NSException exceptionWithName: @"SQLSourceIOException"
+                                 reason: reason
+                               userInfo: nil];
+}
+
+- (NSException *) removeContactEntryWithID: (NSString *) aId
+{
+  NSString *reason;
+
+  reason = [NSString stringWithFormat: @"method '%@' is not available"
+                     @" for class '%@'", NSStringFromSelector (_cmd),
+                     NSStringFromClass (isa)];
+
+  return [NSException exceptionWithName: @"SQLSourceIOException"
+                                 reason: reason
+                               userInfo: nil];
+}
+
+/* user addressbooks */
+- (BOOL) hasUserAddressBooks
+{
+  return NO;
+}
+
+- (NSArray *) addressBookSourcesForUser: (NSString *) user
+{
+  return nil;
+}
+
+- (NSException *) addAddressBookSource: (NSString *) newId
+                       withDisplayName: (NSString *) newDisplayName
+                               forUser: (NSString *) user
+{
+  NSString *reason;
+
+  reason = [NSString stringWithFormat: @"method '%@' is not available"
+                     @" for class '%@'", NSStringFromSelector (_cmd),
+                     NSStringFromClass (isa)];
+
+  return [NSException exceptionWithName: @"SQLSourceIOException"
+                                 reason: reason
+                               userInfo: nil];
+}
+
+- (NSException *) renameAddressBookSource: (NSString *) newId
+                          withDisplayName: (NSString *) newDisplayName
+                                  forUser: (NSString *) user
+{
+  NSString *reason;
+
+  reason = [NSString stringWithFormat: @"method '%@' is not available"
+                     @" for class '%@'", NSStringFromSelector (_cmd),
+                     NSStringFromClass (isa)];
+
+  return [NSException exceptionWithName: @"SQLSourceIOException"
+                                 reason: reason
+                               userInfo: nil];
+}
+
+- (NSException *) removeAddressBookSource: (NSString *) newId
+                                  forUser: (NSString *) user
+{
+  NSString *reason;
+
+  reason = [NSString stringWithFormat: @"method '%@' is not available"
+                     @" for class '%@'", NSStringFromSelector (_cmd),
+                     NSStringFromClass (isa)];
+
+  return [NSException exceptionWithName: @"SQLSourceIOException"
+                                 reason: reason
+                               userInfo: nil];
 }
 
 @end

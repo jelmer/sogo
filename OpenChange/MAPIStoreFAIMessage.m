@@ -21,6 +21,8 @@
  */
 
 #import "MAPIStoreActiveTables.h"
+#import "MAPIStoreContext.h"
+#import "MAPIStoreUserContext.h"
 #import "NSObject+MAPIStore.h"
 
 #import "MAPIStoreFAIMessage.h"
@@ -29,6 +31,7 @@
 #include <talloc.h>
 #include <util/time.h>
 #include <mapistore/mapistore.h>
+#include <mapistore/mapistore_errors.h>
 
 @implementation MAPIStoreFAIMessage
 
@@ -39,10 +42,36 @@
                          andType: MAPISTORE_FAI_TABLE];
 }
 
-- (int) getPrAssociated: (void **) data
-               inMemCtx: (TALLOC_CTX *) memCtx
+- (int) getPidTagAssociated: (void **) data
+                   inMemCtx: (TALLOC_CTX *) memCtx
 {
   return [self getYes: data inMemCtx: memCtx];
+}
+
+- (enum mapistore_error) saveMessage
+{
+  enum mapistore_error rc;
+  MAPIStoreContext *context;
+  SOGoUser *ownerUser;
+
+  context = [self context];
+  ownerUser = [[self userContext] sogoUser];
+  if ([[context activeUser] isEqual: ownerUser])
+    rc = [super saveMessage];
+  else
+    rc = MAPISTORE_ERR_DENIED;
+
+  return rc;
+}
+
+- (BOOL) subscriberCanReadMessage
+{
+  return NO;
+}
+
+- (BOOL) subscriberCanModifyMessage
+{
+  return NO;
 }
 
 @end

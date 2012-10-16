@@ -35,14 +35,15 @@
 
 @class EOQualifier;
 
+@class MAPIStoreContext;
 @class MAPIStoreFolder;
+@class MAPIStoreMapping;
 @class MAPIStoreTable;
+@class MAPIStoreUserContext;
 
 @interface MAPIStoreObject : NSObject
 {
   const IMP *classGetters;
-
-  uint32_t mapiRetainCount;
 
   NSMutableArray *parentContainersBag;
   MAPIStoreObject *container;
@@ -59,10 +60,6 @@
 - (id) initWithSOGoObject: (id) newSOGoObject
               inContainer: (MAPIStoreObject *) newFolder;
 
-/* HACK: MAPI retain count */
-- (void) setMAPIRetainCount: (uint32_t) newCount;
-- (uint32_t) mapiRetainCount;
-
 - (void) setIsNew: (BOOL) newIsNew;
 - (BOOL) isNew;
 
@@ -71,7 +68,9 @@
 - (id) sogoObject;
 - (MAPIStoreObject *) container;
 
-- (id) context;
+- (MAPIStoreContext *) context;
+- (MAPIStoreUserContext *) userContext;
+- (MAPIStoreMapping *) mapping;
 
 - (void) cleanupCaches;
 
@@ -108,22 +107,22 @@
              inMemCtx: (TALLOC_CTX *) memCtx;
 
 /* implemented getters */
-- (int) getPrDisplayName: (void **) data
-                inMemCtx: (TALLOC_CTX *) memCtx;
-- (int) getPrSearchKey: (void **) data
-              inMemCtx: (TALLOC_CTX *) memCtx;
-- (int) getPrGenerateExchangeViews: (void **) data
-                          inMemCtx: (TALLOC_CTX *) memCtx;
-- (int) getPrParentSourceKey: (void **) data
+- (int) getPidTagDisplayName: (void **) data
                     inMemCtx: (TALLOC_CTX *) memCtx;
-- (int) getPrSourceKey: (void **) data
-              inMemCtx: (TALLOC_CTX *) memCtx;
-- (int) getPrChangeKey: (void **) data
-              inMemCtx: (TALLOC_CTX *) memCtx;
-- (int) getPrCreationTime: (void **) data
-                 inMemCtx: (TALLOC_CTX *) memCtx;
-- (int) getPrLastModificationTime: (void **) data
-                         inMemCtx: (TALLOC_CTX *) memCtx;
+- (int) getPidTagSearchKey: (void **) data
+                  inMemCtx: (TALLOC_CTX *) memCtx;
+- (int) getPidTagGenerateExchangeViews: (void **) data
+                              inMemCtx: (TALLOC_CTX *) memCtx;
+- (int) getPidTagParentSourceKey: (void **) data
+                        inMemCtx: (TALLOC_CTX *) memCtx;
+- (int) getPidTagSourceKey: (void **) data
+                  inMemCtx: (TALLOC_CTX *) memCtx;
+- (int) getPidTagChangeKey: (void **) data
+                  inMemCtx: (TALLOC_CTX *) memCtx;
+- (int) getPidTagCreationTime: (void **) data
+                     inMemCtx: (TALLOC_CTX *) memCtx;
+- (int) getPidTagLastModificationTime: (void **) data
+                             inMemCtx: (TALLOC_CTX *) memCtx;
 
 /* subclasses */
 - (uint64_t) objectVersion;

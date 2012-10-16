@@ -29,6 +29,7 @@
 #import <NGObjWeb/SoObject.h>
 #import <NGObjWeb/SoSecurityManager.h>
 #import <NGObjWeb/WOContext.h>
+#import <NGObjWeb/WOContext+SoObjects.h>
 #import <NGObjWeb/WORequest.h>
 #import <NGObjWeb/WOResponse.h>
 
@@ -52,7 +53,15 @@
 
 #import "UIxContactFoldersView.h"
 
+Class SOGoContactSourceFolderK, SOGoGCSFolderK;
+
 @implementation UIxContactFoldersView
+
++ (void) initialize
+{
+  SOGoContactSourceFolderK = [SOGoContactSourceFolder class];
+  SOGoGCSFolderK = [SOGoGCSFolder class];
+}
 
 - (id) init
 {
@@ -110,11 +119,14 @@
 
   folders = [self clientObject];
   folder = [folders lookupPersonalFolder: @"personal" ignoringRights: YES];
-
-  contactInfos = [folder lookupContactsWithFilter: nil
-				       onCriteria: nil
-					   sortBy: @"c_cn"
-					 ordering: NSOrderedAscending];
+  if (folder && [folder conformsToProtocol: @protocol (SOGoContactFolder)])
+    contactInfos = [folder lookupContactsWithFilter: nil
+                                         onCriteria: nil
+                                             sortBy: @"c_cn"
+                                           ordering: NSOrderedAscending
+                                           inDomain: nil];
+  else
+    contactInfos = nil;
   
   return contactInfos;
 }
@@ -149,7 +161,7 @@
 {
   id <WOActionResults> result;
   SOGoFolder <SOGoContactFolder> *folder;
-  NSString *searchText, *mail;
+  NSString *searchText, *mail, *domain;
   NSDictionary *data;
   NSArray *folders, *contacts, *descriptors, *sortedContacts;
   NSMutableArray *sortedFolders;
@@ -164,6 +176,7 @@
       // NSLog(@"Search all contacts: %@", searchText);
       excludeGroups = [[self queryParameterForKey: @"excludeGroups"] boolValue];
       excludeLists = [[self queryParameterForKey: @"excludeLists"] boolValue];
+      domain = [[context activeUser] domain];
       folders = nil;
       NS_DURING
         folders = [[self clientObject] subFolders];
@@ -183,7 +196,7 @@
         {
           folder = [folders objectAtIndex: i];
 	  /* We first search in LDAP folders (in case of duplicated entries in GCS folders) */
-          if ([folder isKindOfClass: [SOGoContactSourceFolder class]])
+          if ([folder isKindOfClass: SOGoContactSourceFolderK])
             [sortedFolders insertObject: folder atIndex: 0];
           else
             [sortedFolders addObject: folder];
@@ -195,7 +208,8 @@
           contacts = [folder lookupContactsWithFilter: searchText
                                            onCriteria: @"name_or_address"
                                                sortBy: @"c_cn"
-                                             ordering: NSOrderedAscending];
+                                             ordering: NSOrderedAscending
+                                             inDomain: domain];
           for (j = 0; j < [contacts count]; j++)
             {
               contact = [contacts objectAtIndex: j];
@@ -287,8 +301,21 @@
 
 - (NSString *) currentContactFolderClass
 {
-  return ([currentFolder isKindOfClass: [SOGoContactSourceFolder class]]
+  return (([currentFolder isKindOfClass: SOGoContactSourceFolderK]
+           && ![currentFolder isPersonalSource])
           ? @"remote" : @"local");
+}
+
+- (NSString *) currentContactFolderAclEditing
+{
+  return ([currentFolder isKindOfClass: SOGoGCSFolderK]
+          ? @"available": @"unavailable");
+}
+
+- (NSString *) currentContactFolderListEditing
+{
+  return ([currentFolder isKindOfClass: SOGoGCSFolderK]
+          ? @"available": @"unavailable");
 }
 
 - (NSString *) verticalDragHandleStyle

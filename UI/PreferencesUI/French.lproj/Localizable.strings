@@ -30,6 +30,7 @@
 "Disable auto reply on" = "Désactiver la réponse automatique le";
 "Please specify your message and your email addresses for which you want to enable auto reply."
 = "Veuillez définir un message et vos adresses pour lesquelles pour désirez activer une réponse automatique.";
+"Your vacation message must not end with a single dot on a line." = "Le message de vacances ne doit pas se terminer par une ligne ne contenant qu'un point.";
 "End date of your auto reply must be in the future."
 = "La date de fin de la réponse automatique doit être dans le future.";
 
@@ -75,10 +76,17 @@
 "longDateFmt_2" = "%e %B %Y";
 "longDateFmt_3" = "%d %B, %Y";
 "longDateFmt_4" = "";
+"longDateFmt_5" = "";
+"longDateFmt_6" = "";
+"longDateFmt_7" = "";
+"longDateFmt_8" = "";
+"longDateFmt_9" = "";
+"longDateFmt_10" = "";
 
 "timeFmt_0" = "%H:%M";
 "timeFmt_1" = "%H.%M";
 "timeFmt_2" = "";
+"timeFmt_3" = "";
 
 /* calendar */
 "Week begins on :" = "Premier jour de la semaine :";
@@ -165,6 +173,13 @@
 "Confirmation:" = "Confirmation:";
 "Change" = "Changer";
 
+/* Event+task classifications */
+"Default events classification :" = "Classification par défaut des événements :";
+"Default tasks classification :" = "Classification par défaut des tâches :";
+"PUBLIC_item" = "Public";
+"CONFIDENTIAL_item" = "Confidentiel";
+"PRIVATE_item" = "Privé";
+
 /* Event+task categories */
 "category_none" = "Aucune";
 "calendar_category_labels" = "Anniversaire,Affaire,Appels,Clients,Compétitions,Congrès,Consommation,Préférés,Suivis,Cadeaux,Congés,Idées,Problèmes,Réunion,Divers,Personnel,Projets,Jour férié,Statut,Fournisseurs,Voyages,Professionnel";
@@ -180,7 +195,7 @@
 "choose" = "Choisir ...";
 "Catalan" = "Català";
 "Czech" = "Česky";
-"DanishDenmark" = "Dansk (Danmark)";
+"Danish" = "Dansk (Danmark)";
 "Dutch" = "Nederlands";
 "English" = "English";
 "French" = "Français";
@@ -196,18 +211,6 @@
 "Swedish" = "Svenska";
 "Ukrainian" = "Українська";
 "Welsh" = "Cymraeg";
-
-/* Return receipts */
-"When I receive a request for a return receipt:" = "Lors de la réception d'une demande d'accusé de réception :";
-"Never send a return receipt" = "Ne jamais envoyer d'accusé de réception";
-"Allow return receipts for some messages" = "Autoriser les accusés de réception pour certains messages";
-"If I'm not in the To or Cc of the message:" = "Si je ne suis pas dans le destinataire ou en copie du message :";
-"If the sender is outside my domain:" = "Si l'expéditeur est hors de mon domaine :";
-"In all other cases:" = "Dans tous les autres cas :";
-
-"Never send" = "Ne jamais envoyer";
-"Always send" = "Toujours envoyer";
-"Ask me" = "Me demander";
 
 /* Return receipts */
 "When I receive a request for a return receipt:" = "Lors de la réception d'une demande d'accusé de réception :";
@@ -286,5 +289,3 @@
 "Unhandled error response" = "Erreur inconnue";
 "Password change is not supported." = "Changement de mot de passe non-supporté.";
 "Unhandled HTTP error code: %{0}" = "Code HTTP non-géré: %{0}";
-"New password:" = "Nouveau mot de passe:";
-"Confirmation:" = "Confirmation:";

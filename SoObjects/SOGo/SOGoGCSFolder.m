@@ -52,7 +52,6 @@
 #import <GDLContentStore/GCSFolder.h>
 #import <GDLContentStore/NSURL+GCS.h>
 #import <SaxObjC/XMLNamespaces.h>
-#import <SOGoUI/SOGoFolderAdvisory.h>
 
 #import "NSDictionary+Utilities.h"
 #import "NSArray+Utilities.h"
@@ -111,8 +110,8 @@ static NSArray *childRecordFields = nil;
 		  withEquivalent: SoPerm_WebDAVAccess
 		  asChildOf: davElement (@"read", @"DAV:")]; */
       [aclManager registerDAVPermission: davElement (@"write", @"DAV:")
-		  abstract: YES
-		  withEquivalent: nil
+		  abstract: NO
+		  withEquivalent: SoPerm_AddDocumentsImagesAndFiles
 		  asChildOf: davElement (@"all", @"DAV:")];
       [aclManager registerDAVPermission: davElement (@"bind", @"DAV:")
 		  abstract: NO
@@ -498,28 +497,6 @@ static NSArray *childRecordFields = nil;
     folder = nil;
 
   return folder;
-}
-
-- (void) sendFolderAdvisoryTemplate: (NSString *) template
-{
-  NSString *pageName;
-  SOGoUser *user;
-  SOGoFolderAdvisory *page;
-  NSString *language;
-
-  user = [SOGoUser userWithLogin: [self ownerInContext: context]];
-  if ([[user domainDefaults] foldersSendEMailNotifications])
-    {
-      language = [[user userDefaults] language];
-      pageName = [NSString stringWithFormat: @"SOGoFolder%@%@Advisory",
-			   language, template];
-
-      page = [[WOApplication application] pageWithName: pageName
-					  inContext: context];
-      [page setFolderObject: self];
-      [page setRecipientUID: [user login]];
-      [page send];
-    }
 }
 
 - (BOOL) create

@@ -13,7 +13,7 @@
   <script type="text/javascript">
     var mailAccounts = <var:string value="mailAccounts" const:escapeHTML="NO"/>;
     var inboxData = <var:string value="inboxData" const:escapeHTML="NO"/>;
-    var getUnseenCountForAllFolders = <var:string value="getUnseenCountForAllFolders"/>;
+    var unseenCountFolders = <var:string value="unseenCountFolders" const:escapeHTML="NO"/>;
   </script>
   <style type="text/css">
   <var:if condition="horizontalDragHandleStyle">
@@ -193,7 +193,7 @@
     <ul>
       <li id="add_to_addressbook"><var:string label:value="Add to Address Book..."/></li>
       <li id="compose_mailto"><var:string label:value="Compose Mail To"/></li>
-      <li id="create_filter"><var:string label:value="Create Filter From Message..."/></li>
+      <!--<li id="create_filter"><var:string label:value="Create Filter From Message..."/></li>-->
     </ul>
   </div>
 

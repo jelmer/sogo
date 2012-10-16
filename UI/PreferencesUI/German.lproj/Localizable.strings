@@ -164,6 +164,13 @@
 "Confirmation:" = "Bestätigung:";
 "Change" = "Ändern";
 
+/* Event+task classifications */
+"Default events classification :" = "Default events classification :";
+"Default tasks classification :" = "Default tasks classification :";
+"PUBLIC_item" = "Public";
+"CONFIDENTIAL_item" = "Confidential";
+"PRIVATE_item" = "Private";
+
 /* Event+task categories */
 "category_none" = "Keine";
 "calendar_category_labels" = "Jubiläum,Geburtstag,Geschäft,Anrufe,Klienten,Konkurrenz,Kunde,Favoriten,Fortsetzung,Geschenke,Ferien,Ideen,Meeting,Fragen,Verschiedenes,Persönlich,Projekte,Feiertag,Status,Lieferanten,Reise,Urlaub";
@@ -179,7 +186,7 @@
 "choose" = "Auswählen";
 "Catalan" = "Català";
 "Czech" = "Česky";
-"DanishDenmark" = "Dansk (Danmark)";
+"Danish" = "Dansk (Danmark)";
 "Dutch" = "Nederlands";
 "English" = "English";
 "French" = "Français";
@@ -195,18 +202,6 @@
 "Swedish" = "Svenska";
 "Ukrainian" = "Українська";
 "Welsh" = "Cymraeg";
-
-/* Return receipts */
-"When I receive a request for a return receipt:" = "Wenn ich die Anforderung einer Empfangsbestätigung erhalte:";
-"Never send a return receipt" = "Niemals eine Bestätigung senden";
-"Allow return receipts for some messages" = "Erlaube eine Bestätigung für einige Nachrichten";
-"If I'm not in the To or Cc of the message:" = "Wenn ich nicht in An oder CC der Nachricht bin:";
-"If the sender is outside my domain:" = "Wenn der Absender außerhalb meiner Domain ist:";
-"In all other cases:" = "In allen anderen Fällen:";
-
-"Never send" = "Niemals senden";
-"Always send" = "Immer senden";
-"Ask me" = "Mich fragen";
 
 /* Return receipts */
 "When I receive a request for a return receipt:" = "Wenn ich die Anforderung einer Empfangsbestätigung erhalte:";

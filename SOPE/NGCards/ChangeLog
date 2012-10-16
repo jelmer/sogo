@@ -1,3 +1,33 @@
+2012-03-11  Wolfgang Sourdeau  <wsourdeau@inverse.ca>
+
+	* iCalEvent.m (-hasDuration): returns NO when the value is present
+	but empty.
+
+2012-02-03  Francis Lachapelle  <flachapelle@inverse.ca>
+
+	* iCalDailyRecurrenceCalculator.m
+	(-recurrenceRangesWithinCalendarDateRange): handle the case
+	where the occurrence start date doesn't cover the reference period
+	but the end date does.
+
+2012-01-11  Wolfgang Sourdeau  <wsourdeau@inverse.ca>
+
+	* NSString+NGCards.m (-asCardAttributeValues): fixed a leak by
+	freeing "characters" at the end of the method.
+
+2012-01-09  Wolfgang Sourdeau  <wsourdeau@inverse.ca>
+
+	* NSString+NGCards.m (-vCardSubvalues): fixed allocation of
+	parsing buffer to avoid a buffer overflow.
+
+2011-12-30  Wolfgang Sourdeau  <wsourdeau@inverse.ca>
+
+	* NGVCard.m (-initWithUid:): initialize "CLASS" and "PROFILE".
+
+	* CardGroup.m (-isVoid): overriden method.
+	(-cleanupEmptyChildren): make use of "isVoid" to detect and remove
+	empty children.
+
 2011-11-21  Francis Lachapelle  <flachapelle@inverse.ca>
 
 	* iCalTimeZone.m (+knownTimeZoneNames): ignore files that don't

@@ -29,6 +29,7 @@
 #import <NGStreams/NGActiveSocket.h>
 #import <Contacts/SOGoContactFolder.h>
 #import <Contacts/SOGoContactFolders.h>
+#import <Contacts/NSString+LDIF.h>
 #import <SOGo/SOGoProductLoader.h>
 #import <SOGo/SOGoUserFolder.h>
 #import <SOGo/NSDictionary+Utilities.h>
@@ -120,13 +121,13 @@ Class SOGoContactSourceFolderKlass = Nil;
       value = [entry objectForKey: key];
       if ([value isKindOfClass: [NSString class]] && [value length] > 0)
         {
-          if ([value _isLDIFSafe])
-            [result appendFormat: @"%@: %@\n",
-                    [key substringFromIndex: 2], value];
-          else
+          if ([value mustEncodeLDIFValue])
             [result appendFormat: @"%@:: %@\n",
                     [key substringFromIndex: 2],
                     [value stringByEncodingBase64]];
+          else
+            [result appendFormat: @"%@: %@\n",
+                    [key substringFromIndex: 2], value];
         }
     }
   [result appendString: @"\n"];
@@ -274,7 +275,8 @@ Class SOGoContactSourceFolderKlass = Nil;
                     = [folder lookupContactsWithFilter: filter
                                             onCriteria: @"name_or_address"
                                                 sortBy: @"c_cn"
-                                              ordering: NSOrderedAscending];
+                                              ordering: NSOrderedAscending
+                                              inDomain: nil];
                 }
               else
                 {

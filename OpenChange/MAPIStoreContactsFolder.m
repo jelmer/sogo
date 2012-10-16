@@ -31,44 +31,15 @@
 #import "MAPIStoreContactsContext.h"
 #import "MAPIStoreContactsMessage.h"
 #import "MAPIStoreContactsMessageTable.h"
+#import "NSString+MAPIStore.h"
 
 #import "MAPIStoreContactsFolder.h"
 
 #include <util/time.h>
 #include <gen_ndr/exchange.h>
+#include <mapistore/mapistore_errors.h>
 
 @implementation MAPIStoreContactsFolder
-
-- (id) initWithURL: (NSURL *) newURL
-         inContext: (MAPIStoreContext *) newContext
-{
-  SOGoUserFolder *userFolder;
-  SOGoContactFolders *parentFolder;
-  WOContext *woContext;
-
-  if ((self = [super initWithURL: newURL
-                       inContext: newContext]))
-    { 
-      woContext = [newContext woContext];
-      userFolder = [SOGoUserFolder objectWithName: [newURL user]
-                                      inContainer: MAPIApp];
-      [parentContainersBag addObject: userFolder];
-      [woContext setClientObject: userFolder];
-
-      parentFolder = [userFolder lookupName: @"Contacts"
-                                  inContext: woContext
-                                    acquire: NO];
-      [parentContainersBag addObject: parentFolder];
-      [woContext setClientObject: parentFolder];
-
-      sogoObject = [parentFolder lookupName: @"personal"
-                                  inContext: woContext
-                                    acquire: NO];
-      [sogoObject retain];
-    }
-
-  return self;
-}
 
 - (MAPIStoreMessageTable *) messageTable
 {
@@ -76,18 +47,9 @@
   return [MAPIStoreContactsMessageTable tableForContainer: self];
 }
 
-- (EOQualifier *) componentQualifier
+- (NSString *) component
 {
-  static EOQualifier *componentQualifier = nil;
-
-  /* TODO: we need to support vlist as well */
-  if (!componentQualifier)
-    componentQualifier
-      = [[EOKeyValueQualifier alloc] initWithKey: @"c_component"
-				operatorSelector: EOQualifierOperatorEqual
-					   value: @"vcard"];
-
-  return componentQualifier;
+  return @"vcard";
 }
 
 - (MAPIStoreMessage *) createMessage
@@ -140,6 +102,24 @@
     rights |= RoleNone; /* actually "folder visible" */
  
   return rights;
+}
+
+- (BOOL) subscriberCanModifyMessages
+{
+  return [[self activeUserRoles] containsObject: SOGoRole_ObjectEditor];
+}
+
+- (BOOL) subscriberCanReadMessages
+{
+  return [[self activeUserRoles] containsObject: SOGoRole_ObjectViewer];
+}
+
+- (int) getPidTagDefaultPostMessageClass: (void **) data
+                                inMemCtx: (TALLOC_CTX *) memCtx
+{
+  *data = [@"IPM.Contact" asUnicodeInMemCtx: memCtx];
+
+  return MAPISTORE_SUCCESS;
 }
 
 @end

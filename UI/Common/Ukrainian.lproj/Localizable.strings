@@ -28,10 +28,27 @@
 "Add..." = "Додати...";
 "Remove" = "Вилучити";
 
-"Default Roles" = "Контроль доступу для всіх";
 "Subscribe User" = "Підписати користувача";
 
+"Any Authenticated User" = "Будь-який авторизований користувач";
+"Public Access" = "Публічний доступ";
+"Any user not listed above" = "Будь-який користувач, крім зазначених вище";
+"Anybody accessing this resource from the public area" = "Будь-який користувач, що бажає отримати доступ з публічного простору";
+
 "Sorry, the user rights can not be configured for that object." = "Вибачте, для цього об’єкту неможливо налаштувати права доступу.";
+
+"Any user with an account on this system will be able to access your mailbox \"%{0}\". Are you certain you trust them all?"
+     = "Будь-який користувач з обліковим записом у цій системі зможе отримати доступ до Вашої скриньки \"%{0}\". Чи Ви бажаєте надати такий доступ?";
+"Any user with an account on this system will be able to access your calendar \"%{0}\". Are you certain you trust them all?" 
+     = "Будь-який користувач з обліковим записом у цій системі зможе отримати доступ до Вашого календаря \"%{0}\". Чи Ви впевнені, що бажаєте опублікувати Ваш календар у такий спосіб?";
+"Potentially anyone on the Internet will be able to access your calendar \"%{0}\", even if they do not have an account on this system. Is this information suitable for the public Internet?"
+     = "Потенційно будь-хто з Інтернету зможе отримати доступ до Вашого календаря \"%{0}\", навіть якщо не має зареєстрованого облікового доступу у цій системі. Чи Ви впевнені, що бажаєте опублікувати Ваш календар у такий спосіб?";
+"Any user with an account on this system will be able to access your address book \"%{0}\". Are you certain you trust them all?"
+     = "Будь-який користувач з обліковим записом у цій системи зможе отримати доступ до Вашої адресної книги \"%{0}\". Чи Ви бажаєте надати такий доступ?";
+"Potentially anyone on the Internet will be able to access your address book \"%{0}\", even if they do not have an account on this system. Is this information suitable for the public Internet?"
+     = "Ймовірно будь-хто з користувачів Інтернет зможе отримати доступ до Вашої адресної книги \"%{0}\", навіть якщо не має облікового запису у цій системі. Чи Ви бажаєте надати такий доступ?";
+"Give Access" = "Дати доступ";
+"Keep Private" = "Залишити у приватному доступі";
 
 /* generic.js */
 "Unable to subscribe to that folder!"
@@ -50,7 +67,6 @@
 "A folder by that name already exists." = "Тека з такою назвою вже існує.";
 "You cannot create a list in a shared address book." 
         = "Ви не можете створювати перелік у спільній адресній книзі.";
-
 "Warning" = "Увага";
 
 "You are not allowed to access this module or this system. Please contact your system administrator."
@@ -62,6 +78,15 @@
 "delegate is organizer" = "Запрошений учасник є організатором. Будь ласка, зазначте іншу запрошену особу.";
 "delegate is a participant" = "Цього учасника вже запрошено.";
 "delegate is a group" = "Зазначена адреса є групою. Ви можете запросити лише окрему особу.";
+
+"Snooze for " = "Відкласти на";
+"5 minutes" = "5 хвилин";
+"10 minutes" = "10 хвилин";
+"15 minutes" = "15 хвилин";
+"30 minutes" = "30 хвилин";
+"45 minutes" = "45 хвилин";
+"1 hour" = "1 годину";
+
 
 /* common buttons */
 "OK" = "Добре";

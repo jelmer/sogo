@@ -37,10 +37,12 @@
 {
   NSString *_sourceID;
   NSString *_domain;
+  NSString *_domainField;
   NSString *_authenticationFilter;
   NSArray *_loginFields;
   NSArray *_mailFields;
   NSString *_imapLoginField;
+  NSString *_imapHostField;
   NSString *_userPasswordAlgorithm;
   NSURL *_viewURL;
 

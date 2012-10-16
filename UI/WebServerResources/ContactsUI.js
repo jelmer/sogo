@@ -3,7 +3,7 @@
 
 var cachedContacts = {};
 
-var usersRightsWindowHeight = 179;
+var usersRightsWindowHeight = 194;
 var usersRightsWindowWidth = 450;
 
 var Contact = {
@@ -115,7 +115,6 @@ function contactsListCallback(http) {
                                             { categories: contact["c_categories"],
                                               contactname: contact["c_cn"] },
                                             tbody);
-                    
                     var cell = createElement("td",
                                              null,
                                              ( "displayName" ),
@@ -197,6 +196,7 @@ function contactsListCallback(http) {
                         var rowPosition = row.rowIndex * row.getHeight();
                         if (div.getHeight() < rowPosition)
                             div.scrollTop = rowPosition; // scroll to selected contact
+                        row.selectElement();
                         break;
                     }
                 }
@@ -258,17 +258,6 @@ function onContactContextMenuHide(event) {
     this.stopObserving("contextmenu:hide", onContactContextMenuHide);
 }
 
-function onFolderMenuHide(event) {
-    var topNode = $('d');
-
-    if (topNode.menuSelectedEntry) {
-        topNode.menuSelectedEntry.deselect();
-        topNode.menuSelectedEntry = null;
-    }
-    if (topNode.selectedEntry)
-        topNode.selectedEntry.selectElement();
-}
-
 function _onContactMenuAction(folderItem, action, refresh) {
     var selectedFolders = $("contactFolders").getSelectedNodes();
     var folderId = $(folderItem).readAttribute("folderId");
@@ -308,11 +297,12 @@ function onContactMenuMove(event) {
 
 function onMenuExportContact (event) {
     var selectedFolders = $("contactFolders").getSelectedNodes();
-    var selectedFolderId = $(selectedFolders[0]).readAttribute("id");
-    if (selectedFolderId != "/shared") {
-        var contactIds = $(document.menuTarget).collect(function(row) {
-                                                        return row.getAttribute("id");
-                                                        });
+    var canExport = (selectedFolders[0].getAttribute("owner") != "nobody");
+    if (canExport) {
+        var selectedFolderId = $(selectedFolders[0]).readAttribute("id");
+        var contactIds = document.menuTarget.collect(function(row) {
+                return row.readAttribute("id");
+            });
         var url = ApplicationBaseURL + selectedFolderId + "/export"
           + "?uid=" + contactIds.join("&uid=");
         window.location.href = url;
@@ -512,9 +502,6 @@ function onToolbarDeleteSelectedContactsConfirm(dialogId) {
     var contactsList = $('contactsList');
     var rows = contactsList.getSelectedRowsId();
     for (var i = 0; i < rows.length; i++) {
-        var row = $(rows[i]);
-        row.deselect();
-        row.hide();
         delete cachedContacts[Contact.currentAddressBook + "/" + rows[i]];
         var urlstr = (URLForFolderID(Contact.currentAddressBook) + "/"
                       + rows[i] + "/delete");
@@ -532,6 +519,7 @@ function onContactDeleteEventCallback(http) {
                 $("contactView").update();
                 Contact.currentContact = null;
             }
+
             Contact.deleteContactsRequestCount--;
             if (Contact.deleteContactsRequestCount == 0) {
                 var nextRow = row.next("tr");
@@ -543,7 +531,10 @@ function onContactDeleteEventCallback(http) {
                     loadContact(Contact.currentContact);
                 }
             }
-            row.parentNode.removeChild(row);
+            if (row) {
+                row.deselect();
+                row.parentNode.removeChild(row);
+            }
         }
         else if (parseInt(http.status) == 403) {
             var row = $(http.callbackData);
@@ -598,10 +589,11 @@ function newContact(sender) {
 
 function newList(sender) {
     var li = $(Contact.currentAddressBook);
-    if (li.hasClassName("remote"))
-      showAlertDialog(_("You cannot create a list in a shared address book."));
-    else
+    var listEditing = li.getAttribute("list-editing");
+    if (listEditing && listEditing == "available")
       openContactWindow(URLForFolderID(Contact.currentAddressBook) + "/newlist");
+    else
+      showAlertDialog(_("You cannot create a list in a shared address book."));
 
     return false;
 }
@@ -735,6 +727,7 @@ function appendAddressBook(name, folder) {
 
         li.setAttribute("id", folder);
         li.setAttribute("owner", owner);
+        li.setAttribute("list-editing", "available");
         li.addClassName("local");
         li.appendChild(document.createTextNode(name
                                                .replace("&lt;", "<", "g")
@@ -775,6 +768,7 @@ function onAddressBookExport(event) {
     window.location.href = url;
 
     event.stop();
+    hideMenu(document.currentPopupMenu);
 }
 
 function onAddressBookImport(event) {
@@ -1068,15 +1062,15 @@ function onMenuSharing(event) {
 
     var folders = $("contactFolders");
     var selected = folders.getSelectedNodes()[0];
-    var owner = selected.getAttribute("owner");
-    if (owner == "nobody")
-        showAlertDialog(_("The user rights cannot be edited for this object!"));
-    else {
+    var aclEditing = selected.getAttribute("acl-editing");
+    if (aclEditing && aclEditing == "available") {
         var title = this.innerHTML;
         var url = URLForFolderID(selected.getAttribute("id"));
 
         openAclWindow(url + "/acls", title);
     }
+    else
+        showAlertDialog(_("The user rights cannot be edited for this object!"));
 }
 
 function onAddressBooksMenuPrepareVisibility() {
@@ -1089,30 +1083,55 @@ function onAddressBooksMenuPrepareVisibility() {
         var menu = $("contactFoldersMenu").down("ul");;
         var listElements = menu.childNodesWithTag("li");
         var modifyOption = listElements[0];
+        var newListOption = listElements[3];
         var removeOption = listElements[5];
         var exportOption = listElements[7];
+        var importOption = listElements[8];
         var sharingOption = listElements[listElements.length - 1];
 
         // Disable the "Sharing" and "Modify" options when address book
         // is not owned by user
         if (folderOwner == UserLogin || IsSuperUser) {
-            modifyOption.removeClassName("disabled"); // WARNING: will fail for super users anyway
-            sharingOption.removeClassName("disabled");
+            modifyOption.removeClassName("disabled"); // WARNING: will fail
+                                                      // for super users
+                                                      // anyway
+            var aclEditing = selected[0].getAttribute("acl-editing");
+            if (aclEditing && aclEditing == "available") {
+                sharingOption.removeClassName("disabled");
+            }
+            else {
+                sharingOption.addClassName("disabled");
+            }
         }
         else {
             modifyOption.addClassName("disabled");
             sharingOption.addClassName("disabled");
         }
 
+        var listEditing = selected[0].getAttribute("list-editing");
+        if (listEditing && listEditing == "available") {
+            newListOption.removeClassName("disabled");
+        }
+        else {
+            newListOption.addClassName("disabled");
+        }
+
         /* Disable the "remove" and "export ab" options when address book is
            public */
         if (folderOwner == "nobody") {
             exportOption.addClassName("disabled");
+            importOption.addClassName("disabled");
             removeOption.addClassName("disabled");
         }
         else {
             exportOption.removeClassName("disabled");
-            removeOption.removeClassName("disabled");
+            importOption.removeClassName("disabled");
+            if (selected[0].getAttribute("id") == "/personal") {
+                removeOption.addClassName("disabled");
+            }
+            else {
+                removeOption.removeClassName("disabled");
+            }
         }
 
         return true;
@@ -1322,6 +1341,7 @@ function initContacts(event) {
     if (typeof onWindowResize != 'function') {
         // When loaded from the mail editor, onWindowResize is
         // already registered
+        onWindowResize = onContactsWindowResize;
         onWindowResize.defer();
         Event.observe(window, "resize", onWindowResize);
     } 
@@ -1330,7 +1350,7 @@ function initContacts(event) {
     sorting["ascending"] = true;
 }
 
-function onWindowResize(event) {
+onContactsWindowResize = function (event) {
     var handle = $("dragHandle");
     if (handle)
         handle.adjust();
@@ -1461,19 +1481,19 @@ function configureDraggables() {
         Draggables.empty();
     
         if (mainElement == null) {
-            mainElement = new Element ("div", {id: "dragDropVisual"});
+            mainElement = new Element("div", {id: "dragDropVisual"});
             document.body.appendChild(mainElement);
             mainElement.absolutize();
         }
         mainElement.hide();
     
-        new Draggable ("dragDropVisual", 
-                       { handle: "contactsList", 
-                               onStart: startDragging,
-                               onEnd: stopDragging,
-                               onDrag: whileDragging,
-                               scroll: window
-                           }); 
+        new Draggable("dragDropVisual", 
+                      { handle: "contactsList", 
+                        onStart: startDragging,
+                        onEnd: stopDragging,
+                        onDrag: whileDragging,
+                        scroll: window,
+                        delay: 250 });
     }
 }
 
@@ -1501,10 +1521,13 @@ function currentFolderIsRemote () {
 }
 
 function startDragging (itm, e) {
+    if (!Event.isLeftClick(e))
+        return;
     var target = Event.element(e);
     if (target.up().up().tagName != "TBODY")
-        return false;
-    
+        return;
+
+    $("contactsListContent").setStyle({ overflow: "visible" });
     var handle = $("dragDropVisual");
     var contacts = $('contactsList').getSelectedRowsId();
     var count = contacts.length;
@@ -1532,6 +1555,7 @@ function whileDragging (itm, e) {
 }
 
 function stopDragging () {
+    $("contactsListContent").setStyle({ overflow: "auto", overflowX: "hidden" });
     var handle = $("dragDropVisual");
     handle.hide();
     if (handle.hasClassName ("copy"))

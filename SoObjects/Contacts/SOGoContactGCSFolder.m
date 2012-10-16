@@ -45,6 +45,7 @@
 #import <SOGo/NSDictionary+Utilities.h>
 #import <SOGo/NSString+Utilities.h>
 #import <SOGo/NSObject+DAV.h>
+#import <SOGo/WORequest+SOGo.h>
 
 #import "SOGoContactGCSEntry.h"
 #import "SOGoContactGCSList.h"
@@ -284,10 +285,15 @@ static NSArray *folderListingFields = nil;
   return record;
 }
 
+/* 
+ * GCS folder are personal folders and are not associated to a domain.
+ * The domain is therefore ignored.
+ */
 - (NSArray *) lookupContactsWithFilter: (NSString *) filter
                             onCriteria: (NSString *) criteria
                                 sortBy: (NSString *) sortKey
                               ordering: (NSComparisonResult) sortOrdering
+                              inDomain: (NSString *) domain
 {
   NSArray *dbRecords, *records;
   EOQualifier *qualifier;
@@ -373,11 +379,6 @@ static NSArray *folderListingFields = nil;
 - (NSString *) folderType
 {
   return @"Contact";
-}
-
-- (NSString *) outlookFolderClass
-{
-  return @"IPF.Contact";
 }
 
 /* TODO: multiget reorg */

@@ -19,6 +19,7 @@
 "Attach" = "Attach";
 "Save" = "Save";
 "Options" = "Options";
+"Close" = "Close";
 "Size" = "Size";
 
 /* Tooltips */
@@ -63,8 +64,10 @@
 "Shared Account: " = "Shared Account: ";
 
 /* acls */
-"Default Roles" = "Default Roles";
-"User rights for:" = "User rights for:";
+"Access rights to" = "Access rights to";
+"For user" = "For user";
+
+"Any Authenticated User" = "Any Authenticated User";
 
 "List and see this folder" = "List and see this folder";
 "Read mails from this folder" = "Read mails from this folder";
@@ -104,8 +107,6 @@
 "cc"            = "Cc";
 "bcc"           = "Bcc";
 
-"Addressbook"   = "Address Book";
-
 "Edit Draft..." = "Edit Draft...";
 "Load Images" = "Load Images";
 
@@ -144,7 +145,6 @@
 "Date"          = "Date";
 "View"          = "View";
 "All"           = "All";
-"Unread"        = "Unread";
 "No message"    = "No message";
 "messages"      = "messages";
 
@@ -211,7 +211,6 @@
 "Open Message In New Window" = "Open Message In New Window";
 "Reply to Sender Only" = "Reply to Sender Only";
 "Reply to All" = "Reply to All";
-"Forward" = "Forward";
 "Edit As New..." = "Edit As New...";
 "Move To" = "Move To";
 "Copy To" = "Copy To";

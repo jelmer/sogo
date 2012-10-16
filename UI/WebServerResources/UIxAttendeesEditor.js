@@ -219,7 +219,10 @@ function performSearchCallback(http) {
                     list.appendChild(node);
                     node.address = completeEmail;
                     // log("node.address: " + node.address);
-                    node.uid = contact["c_uid"];
+                    if (contact["c_uid"])
+                        node.uid = (contact["isMSExchange"]? UserLogin + ":" : "") + contact["c_uid"];
+                    else
+                        node.uid = null;
                     node.isList = isList;
                     if (isList) {
                         node.cname = contact["c_name"];
@@ -272,7 +275,10 @@ function performSearchCallback(http) {
                 if (data.contacts.length == 1) {
                     // Single result
                     var contact = data.contacts[0];
-                    input.uid = contact["c_uid"];
+                    if (contact["c_uid"])
+                        input.uid = (contact["isMSExchange"]? UserLogin + ":" : "") + contact["c_uid"];
+                    else
+                        input.uid = null;
                     var isList = (contact["c_component"] &&
                                   contact["c_component"] == "vlist");
                     if (isList) {
@@ -516,6 +522,7 @@ function checkAttendee(input) {
     if (tbody && input.value.blank()) {
         var dataTable = $("freeBusyData").tBodies[0];
         var dataRow = dataTable.rows[row.sectionRowIndex];
+        input.stopObserving();
         tbody.removeChild(row);
         dataTable.removeChild(dataRow);
     }
@@ -997,11 +1004,19 @@ freeBusyRequest.prototype = {
   },
 
   _performAjaxRequest: function fBR__performAjaxRequest(rqStart, rqEnd) {
-      var urlstr = (UserFolderURL + "../" + this.mUid
-                    + "/freebusy.ifb/ajaxRead?"
-                    + "sday=" + rqStart.getDayString()
-                    + "&eday=" + rqEnd.getDayString());
-
+      var urlstr = UserFolderURL + "../";
+      var uids = this.mUid.split(":");
+      if (uids.length > 1)
+          urlstr += (uids[0]
+                     + "/freebusy.ifb/ajaxRead?"
+                     + "uid=" + uids[1]
+                     + "&");
+      else
+          urlstr += (this.mUid
+                     + "/freebusy.ifb/ajaxRead?");
+      urlstr += ("sday=" + rqStart.getDayString()
+                 + "&eday=" + rqEnd.getDayString());
+      
       var thisRequest = this;
       var callback = function fBR__performAjaxRequest_cb(http) {
           if (http.readyState == 4) {

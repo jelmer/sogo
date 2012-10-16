@@ -25,9 +25,7 @@
 #import <Foundation/NSURL.h>
 #import <Foundation/NSThread.h>
 
-#import <NGObjWeb/WOContext.h>
 #import <NGObjWeb/WOContext+SoObjects.h>
-
 #import <NGExtensions/NSObject+Logs.h>
 
 #import <SOGo/SOGoUser.h>
@@ -35,10 +33,9 @@
 #import "SOGoMAPIFSFolder.h"
 #import "SOGoMAPIFSMessage.h"
 
-#import "MAPIApplication.h"
 #import "MAPIStoreAttachment.h"
 // #import "MAPIStoreAttachmentTable.h"
-#import "MAPIStoreAuthenticator.h"
+#import "MAPIStoreFallbackContext.h"
 #import "MAPIStoreFolder.h"
 #import "MAPIStoreFolderTable.h"
 #import "MAPIStoreMapping.h"
@@ -47,6 +44,7 @@
 #import "MAPIStoreFAIMessage.h"
 #import "MAPIStoreFAIMessageTable.h"
 #import "MAPIStoreTypes.h"
+#import "MAPIStoreUserContext.h"
 #import "NSArray+MAPIStore.h"
 #import "NSObject+MAPIStore.h"
 #import "NSString+MAPIStore.h"
@@ -69,7 +67,7 @@
 
 /* sogo://username:password@{contacts,calendar,tasks,journal,notes,mail}/dossier/id */
 
-static Class NSDataK, NSStringK, MAPIStoreFAIMessageK;
+static Class NSExceptionK, MAPIStoreFallbackContextK, SOGoObjectK;
 
 static NSMutableDictionary *contextClassMapping;
 
@@ -80,9 +78,8 @@ static NSMutableDictionary *contextClassMapping;
   NSUInteger count, max;
   NSString *moduleName;
 
-  NSDataK = [NSData class];
-  NSStringK = [NSString class];
-  MAPIStoreFAIMessageK = [MAPIStoreFAIMessage class];
+  NSExceptionK = [NSException class];
+  SOGoObjectK = [SOGoObject class];
 
   contextClassMapping = [NSMutableDictionary new];
   classes = GSObjCAllSubclassesOfClass (self);
@@ -94,37 +91,127 @@ static NSMutableDictionary *contextClassMapping;
       if (moduleName)
 	{
 	  [contextClassMapping setObject: currentClass
-			       forKey: moduleName];
+                                  forKey: moduleName];
 	  NSLog (@"  registered class '%@' as handler of '%@' contexts",
 		 NSStringFromClass (currentClass), moduleName);
 	}
     }
+
+  MAPIStoreFallbackContextK = [MAPIStoreFallbackContext class];
 }
 
-static inline MAPIStoreContext *
-_prepareContextClass (Class contextClass,
-                      struct mapistore_connection_info *connInfo,
-                      struct tdb_wrap *indexingTdb, NSURL *url)
++ (struct mapistore_contexts_list *) listAllContextsForUser: (NSString *)  userName
+                                            withTDBIndexing: (struct tdb_wrap *) indexingTdb
+                                                   inMemCtx: (TALLOC_CTX *) memCtx
 {
-  MAPIStoreContext *context;
-  MAPIStoreAuthenticator *authenticator;
+  struct mapistore_contexts_list *list, *current;
+  NSArray *classes;
+  Class currentClass;
+  NSUInteger count, max;
+  MAPIStoreUserContext *userContext;
 
-  context = [[contextClass alloc] initFromURL: url
-                           withConnectionInfo: connInfo
-                               andTDBIndexing: indexingTdb];
-  [context autorelease];
+  list = NULL;
 
-  authenticator = [MAPIStoreAuthenticator new];
-  [authenticator setUsername: [url user]];
-  [authenticator setPassword: [url password]];
-  [context setAuthenticator: authenticator];
-  [authenticator release];
+  userContext = [MAPIStoreUserContext userContextWithUsername: userName
+                                               andTDBIndexing: indexingTdb];
+  [userContext activateWithUser: [userContext sogoUser]];
 
-  [context setupRequest];
-  [context setupBaseFolder: url];
-  [context tearDownRequest];
+  classes = GSObjCAllSubclassesOfClass (self);
+  max = [classes count];
+  for (count = 0; count < max; count++)
+    {
+      currentClass = [classes objectAtIndex: count];
+      current = [currentClass listContextsForUser: userName
+                                  withTDBIndexing: indexingTdb
+                                         inMemCtx: memCtx];
+      if (current)
+        DLIST_CONCATENATE(list, current, void);
+    }
 
-  return context;
+  return list;
+}
+
++ (struct mapistore_contexts_list *) listContextsForUser: (NSString *) userName
+                                         withTDBIndexing: (struct tdb_wrap *) indexingTdb
+                                                inMemCtx: (TALLOC_CTX *) memCtx
+{
+  return NULL;
+}
+
+static Class
+MAPIStoreLookupContextClassByRole (Class self, enum mapistore_context_role role)
+{
+  static NSMutableDictionary *classMapping = nil;
+  Class currentClass;
+  enum mapistore_context_role classRole;
+  NSNumber *roleNbr;
+  NSArray *classes;
+  NSUInteger count, max;
+
+  if (!classMapping)
+    {
+      classMapping = [NSMutableDictionary new];
+      classes = GSObjCAllSubclassesOfClass (self);
+      max = [classes count];
+      for (count = 0; count < max; count++)
+        {
+          currentClass = [classes objectAtIndex: count];
+          classRole = [currentClass MAPIContextRole];
+          if (classRole != -1)
+            {
+              roleNbr = [NSNumber numberWithUnsignedInt: classRole];
+              [classMapping setObject: currentClass
+                               forKey: roleNbr];
+            }
+        }
+    }
+
+  roleNbr = [NSNumber numberWithUnsignedInt: role];
+
+  return [classMapping objectForKey: roleNbr];
+}
+
++ (enum mapistore_error) createRootFolder: (NSString **) mapistoreUriP
+                                  withFID: (uint64_t) fid
+                                  andName: (NSString *) folderName
+                                  forUser: (NSString *) userName
+                                 withRole: (enum mapistore_context_role) role
+{
+  Class contextClass;
+  NSString *mapistoreURI;
+  enum mapistore_error rc = MAPISTORE_SUCCESS;
+
+  contextClass = MAPIStoreLookupContextClassByRole (self, role);
+  if (!contextClass)
+    contextClass = MAPIStoreFallbackContextK;
+
+  mapistoreURI = [contextClass createRootSecondaryFolderWithFID: fid
+                                                        andName: folderName
+                                                        forUser: userName];
+  if (!mapistoreURI && contextClass != MAPIStoreFallbackContextK)
+    mapistoreURI = [MAPIStoreFallbackContextK createRootSecondaryFolderWithFID: fid
+                                                                       andName: folderName
+                                                                       forUser: userName];
+  if (mapistoreURI)
+    *mapistoreUriP = mapistoreURI;
+  else
+    rc = MAPISTORE_ERR_NOT_FOUND;
+
+  return rc;
+}
+
+static inline NSURL *CompleteURLFromMapistoreURI (const char *uri)
+{
+  NSString *urlString;
+  NSURL *completeURL;
+
+  urlString = [NSString stringWithFormat: @"sogo://%@",
+                        [NSString stringWithUTF8String: uri]];
+  if (![urlString hasSuffix: @"/"])
+    urlString = [urlString stringByAppendingString: @"/"];
+  completeURL = [NSURL URLWithString: [urlString stringByAddingPercentEscapesUsingEncoding: NSUTF8StringEncoding]];
+
+  return completeURL;
 }
 
 + (int) openContext: (MAPIStoreContext **) contextPtr
@@ -134,7 +221,7 @@ _prepareContextClass (Class contextClass,
 {
   MAPIStoreContext *context;
   Class contextClass;
-  NSString *module, *completeURLString, *urlString;
+  NSString *module;
   NSURL *baseURL;
   int rc = MAPISTORE_ERR_NOT_FOUND;
 
@@ -142,42 +229,31 @@ _prepareContextClass (Class contextClass,
 
   context = nil;
 
-  urlString = [NSString stringWithUTF8String: newUri];
-  if (urlString)
+  baseURL = CompleteURLFromMapistoreURI (newUri);
+  if (baseURL)
     {
-      completeURLString = [@"sogo://" stringByAppendingString: urlString];
-      if (![completeURLString hasSuffix: @"/"])
-	completeURLString = [completeURLString stringByAppendingString: @"/"];
-      baseURL = [NSURL URLWithString: [completeURLString stringByAddingPercentEscapesUsingEncoding: NSUTF8StringEncoding]];
-      if (baseURL)
+      module = [baseURL host];
+      if (module)
         {
-          module = [baseURL host];
-          if (module)
+          contextClass = [contextClassMapping objectForKey: module];
+          if (contextClass)
             {
-              contextClass = [contextClassMapping objectForKey: module];
-              if (contextClass)
+              context = [[contextClass alloc] initFromURL: baseURL
+                                       withConnectionInfo: newConnInfo
+                                           andTDBIndexing: indexingTdb];
+              if (context)
                 {
-                  context = _prepareContextClass (contextClass,
-                                                  newConnInfo, indexingTdb, 
-                                                  baseURL);
-                  if (context)
-                    {
-                      *contextPtr = context;
-		      mapistore_mgmt_backend_register_user (newConnInfo,
-                                                            "SOGo",
-                                                            [[[context authenticator] username] UTF8String]);
-                      rc = MAPISTORE_SUCCESS;
-                    }
+                  [context autorelease];
+                  rc = MAPISTORE_SUCCESS;
+                  *contextPtr = context;
                 }
-              else
-                NSLog (@"ERROR: unrecognized module name '%@'", module);
             }
+          else
+            NSLog (@"ERROR: unrecognized module name '%@'", module);
         }
-      else
-        NSLog (@"ERROR: url could not be parsed");
     }
   else
-    NSLog (@"ERROR: url is an invalid UTF-8 string");
+    NSLog (@"ERROR: url could not be parsed");
 
   return rc;
 }
@@ -186,10 +262,10 @@ _prepareContextClass (Class contextClass,
 {
   if ((self = [super init]))
     {
-      woContext = [WOContext contextWithRequest: nil];
-      [woContext retain];
-      baseFolder = nil;
+      activeUser = nil;
+      userContext = nil;
       contextUrl = nil;
+      containersBag = [NSMutableArray new];
     }
 
   return self;
@@ -203,6 +279,26 @@ _prepareContextClass (Class contextClass,
 
   if ((self = [self init]))
     {
+      ASSIGN (contextUrl, newUrl);
+
+      username = [newUrl user];
+      if ([username length] == 0)
+        {
+          [self errorWithFormat:
+                  @"attempt to instantiate a context with an empty owner"];
+          [self release];
+          return nil;
+        }
+
+      ASSIGN (userContext,
+              [MAPIStoreUserContext userContextWithUsername: username
+                                             andTDBIndexing: indexingTdb]);
+
+      mapistore_mgmt_backend_register_user (newConnInfo,
+                                            "SOGo",
+                                            [username UTF8String]);
+
+      connInfo = newConnInfo;
       username = [NSString stringWithUTF8String: newConnInfo->username];
       ASSIGN (activeUser, [SOGoUser userWithLogin: username]);
       if (!activeUser)
@@ -212,29 +308,6 @@ _prepareContextClass (Class contextClass,
           [self release];
           return nil;
         }
-      [woContext setActiveUser: activeUser];
-      username = [newUrl user];
-      if ([username length] == 0)
-        {
-          [self errorWithFormat:
-                  @"attempt to instantiate a context with an empty owner"];
-          [self release];
-          return nil;
-        }
-      ASSIGN (ownerUser, [SOGoUser userWithLogin: username]);
-      if (!ownerUser)
-        {
-          [self errorWithFormat:
-                  @"attempt to instantiate a context without a valid owner"];
-          [self release];
-          return nil;
-        }
-      ASSIGN (mapping, [MAPIStoreMapping mappingForUsername: username
-                                               withIndexing: indexingTdb]);
-      [mapping increaseUseCount];
-      ASSIGN (contextUrl, newUrl);
-      mstoreCtx = newConnInfo->mstore_ctx;
-      connInfo = newConnInfo;
     }
 
   return self;
@@ -243,36 +316,18 @@ _prepareContextClass (Class contextClass,
 - (void) dealloc
 {
   mapistore_mgmt_backend_unregister_user ([self connectionInfo], "SOGo", 
-                                          [[[self authenticator] username]
+                                          [[userContext username]
                                             UTF8String]);
-  [baseFolder release];
-  [woContext release];
-  [authenticator release];
-  [mapping decreaseUseCount];
-  [mapping release];
   [contextUrl release];
+  [userContext release];
+  [containersBag release];
 
   [super dealloc];
 }
 
-- (WOContext *) woContext
+- (MAPIStoreUserContext *) userContext
 {
-  return woContext;
-}
-
-- (MAPIStoreMapping *) mapping
-{
-  return mapping;
-}
-
-- (void) setAuthenticator: (MAPIStoreAuthenticator *) newAuthenticator
-{
-  ASSIGN (authenticator, newAuthenticator);
-}
-
-- (MAPIStoreAuthenticator *) authenticator
-{
-  return authenticator;
+  return userContext;
 }
 
 - (NSURL *) url
@@ -285,32 +340,9 @@ _prepareContextClass (Class contextClass,
   return connInfo;
 }
 
-- (void) setupRequest
-{
-  NSMutableDictionary *info;
-
-  [MAPIApp setMAPIStoreContext: self];
-  info = [[NSThread currentThread] threadDictionary];
-  [info setObject: woContext forKey: @"WOContext"];
-}
-
-- (void) tearDownRequest
-{
-  NSMutableDictionary *info;
-
-  info = [[NSThread currentThread] threadDictionary];
-  [info removeObjectForKey: @"WOContext"];
-  [MAPIApp setMAPIStoreContext: nil];
-}
-
 - (SOGoUser *) activeUser
 {
   return activeUser;
-}
-
-- (SOGoUser *) ownerUser
-{
-  return ownerUser;
 }
 
 // - (void) logRestriction: (struct mapi_SRestriction *) res
@@ -332,7 +364,7 @@ _prepareContextClass (Class contextClass,
   // TDB_DATA key, dbuf;
 
   url = [contextUrl absoluteString];
-  objectURL = [mapping urlFromID: fmid];
+  objectURL = [[userContext mapping] urlFromID: fmid];
   if (objectURL)
     {
       if ([objectURL hasPrefix: url])
@@ -370,15 +402,69 @@ _prepareContextClass (Class contextClass,
   return rc;
 }
 
+- (void) ensureContextFolder
+{
+}
+
 - (int) getRootFolder: (MAPIStoreFolder **) folderPtr
               withFID: (uint64_t) newFid
 {
+  enum mapistore_error rc;
+  MAPIStoreMapping *mapping;
+  MAPIStoreFolder *baseFolder;
+  SOGoFolder *currentFolder;
+  WOContext *woContext;
+  NSString *path;
+  NSArray *pathComponents;
+  NSUInteger count, max;
+
+  mapping = [userContext mapping];
   if (![mapping urlFromID: newFid])
     [mapping registerURL: [contextUrl absoluteString]
                   withID: newFid];
-  *folderPtr = baseFolder;
 
-  return (baseFolder) ? MAPISTORE_SUCCESS: MAPISTORE_ERROR;
+  [userContext activateWithUser: activeUser];
+  woContext = [userContext woContext];
+
+  [self ensureContextFolder];
+  currentFolder = [self rootSOGoFolder];
+  path = [contextUrl path];
+  if ([path hasPrefix: @"/"])
+    path = [path substringFromIndex: 1];
+  if ([path hasSuffix: @"/"])
+    path = [path substringToIndex: [path length] - 1];
+  pathComponents = [path componentsSeparatedByString: @"/"];
+  max = [pathComponents count];
+  for (count = 0; currentFolder && count < max; count++)
+    {
+      [woContext setClientObject: currentFolder];
+      currentFolder
+        = [currentFolder lookupName: [pathComponents objectAtIndex: count]
+                          inContext: woContext
+                            acquire: NO];
+      if ([currentFolder isKindOfClass: SOGoObjectK]) /* class common to all
+                                                         SOGo folder types */
+        [containersBag addObject: currentFolder];
+      else
+        currentFolder = nil;
+    }
+
+  if (currentFolder)
+    {
+      baseFolder = [[self MAPIStoreFolderClass]
+                     mapiStoreObjectWithSOGoObject: currentFolder
+                                       inContainer: nil];
+      [baseFolder setContext: self];
+
+      *folderPtr = baseFolder;
+      rc = MAPISTORE_SUCCESS;
+    }
+  else if ([[userContext sogoUser] isEqual: activeUser])
+    rc = MAPISTORE_ERR_NOT_FOUND;
+  else
+    rc = MAPISTORE_ERR_DENIED;
+
+  return rc;
 }
 
 /* utils */
@@ -413,6 +499,7 @@ _prepareContextClass (Class contextClass,
                     inFolderURL: (NSString *) folderURL
 {
   NSString *childURL, *owner;
+  MAPIStoreMapping *mapping;
   uint64_t mappingId;
   uint32_t contextId;
   void *rootObject;
@@ -421,6 +508,7 @@ _prepareContextClass (Class contextClass,
     childURL = [NSString stringWithFormat: @"%@%@", folderURL, key];
   else
     childURL = folderURL;
+  mapping = [userContext mapping];
   mappingId = [mapping idFromURL: childURL];
   if (mappingId == NSNotFound)
     {
@@ -429,11 +517,10 @@ _prepareContextClass (Class contextClass,
       [mapping registerURL: childURL withID: mappingId];
       contextId = 0;
 
-      // FIXME: + 7 to skip the BOM or what?
-      mapistore_search_context_by_uri (mstoreCtx, [folderURL UTF8String] + 7,
+      mapistore_search_context_by_uri (connInfo->mstore_ctx, [folderURL UTF8String] + 7,
                                        &contextId, &rootObject);
-      owner = [ownerUser login];
-      mapistore_indexing_record_add_mid (mstoreCtx, contextId,
+      owner = [userContext username];
+      mapistore_indexing_record_add_mid (connInfo->mstore_ctx, contextId,
                                          [owner UTF8String], mappingId);
     }
 
@@ -460,9 +547,33 @@ _prepareContextClass (Class contextClass,
   return nil;
 }
 
-- (void) setupBaseFolder: (NSURL *) newURL
++ (enum mapistore_context_role) MAPIContextRole
+{
+  return -1;
+}
+
++ (NSString *)
+ createRootSecondaryFolderWithFID: (uint64_t) fid
+                          andName: (NSString *) folderName
+                          forUser: (NSString *) userName
 {
   [self subclassResponsibility: _cmd];
+
+  return nil;
+}
+
+- (Class) MAPIStoreFolderClass
+{
+  [self subclassResponsibility: _cmd];
+
+  return nil;
+}
+
+- (id) rootSOGoFolder
+{
+  [self subclassResponsibility: _cmd];
+
+  return nil;
 }
 
 @end

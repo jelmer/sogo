@@ -91,66 +91,77 @@
   return sharedUserManager;
 }
 
-- (void) _registerSource: (NSDictionary *) udSource
+- (BOOL) _registerSource: (NSDictionary *) udSource
                 inDomain: (NSString *) domain
 {
   NSString *sourceID, *value, *type;
   NSMutableDictionary *metadata;
   NSObject <SOGoSource> *sogoSource;
-  BOOL isAddressBook;
+  BOOL isAddressBook, result;
   Class c;
 
+  result = NO;
   sourceID = [udSource objectForKey: @"id"];
   if ([sourceID length] > 0)
     {
-      type = [[udSource objectForKey: @"type"] lowercaseString];
-      c = NSClassFromString([_registry sourceClassForType: type]);
-      sogoSource = [c sourceFromUDSource: udSource inDomain: domain];
-      if (sourceID)
-        [_sources setObject: sogoSource forKey: sourceID];
-      else
-        [self errorWithFormat: @"id field missing in an user source,"
-              @" check the SOGoUserSources defaults"];
-      metadata = [NSMutableDictionary dictionary];
-      if (domain)
-        [metadata setObject: domain forKey: @"domain"];
-      value = [udSource objectForKey: @"canAuthenticate"];
-      if (value)
-        [metadata setObject: value forKey: @"canAuthenticate"];
-      value = [udSource objectForKey: @"isAddressBook"];
-      if (value)
-        {
-          [metadata setObject: value forKey: @"isAddressBook"];
-          isAddressBook = [value boolValue];
-        }
-      else
-        isAddressBook = NO;
-      value = [udSource objectForKey: @"displayName"];
-      if (value)
-        [metadata setObject: value forKey: @"displayName"];
+      if ([_sourcesMetadata objectForKey: sourceID])
+        [self errorWithFormat: @"attempted to register a contact/user source"
+              @" with duplicated id (%@)", sourceID];
       else
         {
-          if (isAddressBook)
-            [self errorWithFormat: @"addressbook source '%@' has"
-                  @" no displayname", sourceID];
+          type = [[udSource objectForKey: @"type"] lowercaseString];
+          c = NSClassFromString([_registry sourceClassForType: type]);
+          sogoSource = [c sourceFromUDSource: udSource inDomain: domain];
+          if (sourceID)
+            [_sources setObject: sogoSource forKey: sourceID];
+          else
+            [self errorWithFormat: @"id field missing in an user source,"
+                  @" check the SOGoUserSources defaults"];
+          metadata = [NSMutableDictionary dictionary];
+          if (domain)
+            [metadata setObject: domain forKey: @"domain"];
+          value = [udSource objectForKey: @"canAuthenticate"];
+          if (value)
+            [metadata setObject: value forKey: @"canAuthenticate"];
+          value = [udSource objectForKey: @"isAddressBook"];
+          if (value)
+            {
+              [metadata setObject: value forKey: @"isAddressBook"];
+              isAddressBook = [value boolValue];
+            }
+          else
+            isAddressBook = NO;
+          value = [udSource objectForKey: @"displayName"];
+          if (value)
+            [metadata setObject: value forKey: @"displayName"];
+          else
+            {
+              if (isAddressBook)
+                [self errorWithFormat: @"addressbook source '%@' has"
+                      @" no displayname", sourceID];
+            }
+          value = [udSource objectForKey: @"MailFieldNames"];
+          if (value)
+            [metadata setObject: value forKey: @"MailFieldNames"];
+          value = [udSource objectForKey: @"SearchFieldNames"];
+          if (value)
+            [metadata setObject: value forKey: @"SearchFieldNames"];
+ 
+          [_sourcesMetadata setObject: metadata forKey: sourceID];
+          result = YES;
         }
-      value = [udSource objectForKey: @"MailFieldNames"];
-      if (value)
-        [metadata setObject: value forKey: @"MailFieldNames"];
-      value = [udSource objectForKey: @"SearchFieldNames"];
-      if (value)
-        [metadata setObject: value forKey: @"SearchFieldNames"];
-      [_sourcesMetadata setObject: metadata forKey: sourceID];
     }
   else
     [self errorWithFormat: @"attempted to register a contact/user source"
           @" without id (skipped)"];
+
+  return result;
 }
 
 - (int) _registerSourcesInDomain: (NSString *) domain
 {
   NSArray *userSources;
-  unsigned int count, max;
+  unsigned int count, max, total;
   SOGoDomainDefaults *dd;
 
   if (domain)
@@ -160,11 +171,13 @@
 
   userSources = [dd userSources];
   max = [userSources count];
+  total = 0;
   for (count = 0; count < max; count++)
-    [self _registerSource: [userSources objectAtIndex: count]
-                 inDomain: domain];
+    if ([self _registerSource: [userSources objectAtIndex: count]
+                     inDomain: domain])
+      total++;
 
-  return max;
+  return total;
 }
 
 - (void) _prepareSources
@@ -255,7 +268,7 @@
   while ((currentID = [allIDs nextObject]))
     {
       sourceDomain = [[_sources objectForKey: currentID] domain];
-      if (![domain length] || [domain isEqualToString: sourceDomain])
+      if (![domain length] || ![sourceDomain length] || [domain isEqualToString: sourceDomain])
         {
           metadata = [_sourcesMetadata objectForKey: currentID];
           if ([[metadata objectForKey: @"canAuthenticate"] boolValue])
@@ -573,7 +586,7 @@
   NSMutableArray *emails;
   NSDictionary *userEntry;
   NSEnumerator *sogoSources;
-  NSObject <SOGoDNSource> *currentSource;
+  NSObject <SOGoSource> *currentSource;
   NSString *sourceID, *cn, *c_domain, *c_uid, *c_imaphostname, *c_imaplogin;
   NSArray *c_emails;
   BOOL access;
@@ -592,12 +605,15 @@
 
   sogoSources = [[self authenticationSourceIDsInDomain: domain]
                   objectEnumerator];
-  while ((sourceID = [sogoSources nextObject]))
+  userEntry = nil;
+  while (!userEntry && (sourceID = [sogoSources nextObject]))
     {
       currentSource = [_sources objectForKey: sourceID];
-      userEntry = [currentSource lookupContactEntryWithUIDorEmail: uid];
+      userEntry = [currentSource lookupContactEntryWithUIDorEmail: uid
+                                                         inDomain: domain];
       if (userEntry)
 	{
+          [currentUser setObject: sourceID forKey: @"SOGoSource"];
 	  if (!cn)
 	    cn = [userEntry objectForKey: @"c_cn"];
 	  if (!c_uid)
@@ -627,8 +643,7 @@
 	  if ([userEntry objectForKey: @"numberOfSimultaneousBookings"])
 	    [currentUser setObject: [userEntry objectForKey: @"numberOfSimultaneousBookings"]
 			 forKey: @"numberOfSimultaneousBookings"];
-	  
-	}
+        }
     }
 
   if (!cn)
@@ -801,10 +816,12 @@
 {
   NSMutableDictionary *compactContacts, *returnContact;
   NSDictionary *userEntry;
-  NSArray *newContacts;
+  NSArray *newContacts, *allEmails;
   NSMutableArray *emails;
   NSString *uid, *email, *info;
   NSNumber *isGroup;
+  id <SOGoSource> source;
+  NSUInteger count, max;
 
   compactContacts = [NSMutableDictionary dictionary];
   while ((userEntry = [contacts nextObject]))
@@ -817,8 +834,11 @@
 	    {
 	      returnContact = [NSMutableDictionary dictionary];
 	      [returnContact setObject: uid forKey: @"c_uid"];
-	      [compactContacts setObject: returnContact forKey: uid];
-	    }
+              source = [userEntry objectForKey: @"source"];
+              if (source)
+                [returnContact setObject: source forKey: @"source"];
+              [compactContacts setObject: returnContact forKey: uid];
+            }
 	  if (![[returnContact objectForKey: @"c_name"] length])
 	    [returnContact setObject: [userEntry objectForKey: @"c_name"]
 			   forKey: @"c_name"];
@@ -832,7 +852,17 @@
 	      [returnContact setObject: emails forKey: @"emails"];
 	    }
 	  email = [userEntry objectForKey: @"mail"];
-	  if (email && ![emails containsObject: email])
+          if ([email isKindOfClass: [NSArray class]])
+            {
+              allEmails = (NSArray *) email;
+              max = [allEmails count];
+              for (count = 0; count < max; count++)
+                {
+                  email = [allEmails objectAtIndex: count];
+                  [emails addObjectUniquely: email];
+                }
+            }
+          else if (email && ![emails containsObject: email])
 	    [emails addObject: email];
 	  email = [userEntry objectForKey: @"mozillasecondemail"];
 	  if (email && ![emails containsObject: email])
@@ -858,6 +888,7 @@
 
 - (NSArray *) _fetchEntriesInSources: (NSArray *) sourcesList
 			    matching: (NSString *) filter
+                            inDomain: (NSString *) domain
 {
   NSMutableArray *contacts;
   NSEnumerator *sources;
@@ -870,7 +901,8 @@
     {
       currentSource = [_sources objectForKey: sourceID];
       [contacts addObjectsFromArray:
-		  [currentSource fetchContactsMatching: filter]];
+		  [currentSource fetchContactsMatching: filter
+                                              inDomain: domain]];
     }
 
   return [self _compactAndCompleteContacts: [contacts objectEnumerator]];
@@ -881,15 +913,17 @@
 {
   return [self
            _fetchEntriesInSources: [self addressBookSourceIDsInDomain: domain]
-                         matching: filter];
+                         matching: filter
+                         inDomain: domain];
 }
 
 - (NSArray *) fetchUsersMatching: (NSString *) filter
                         inDomain: (NSString *) domain
 {
-  return [self _fetchEntriesInSources:
-                 [self authenticationSourceIDsInDomain: domain]
-                             matching: filter];
+  return [self
+           _fetchEntriesInSources: [self authenticationSourceIDsInDomain: domain]
+                         matching: filter
+                         inDomain: domain];
 }
 
 - (NSString *) getLoginForDN: (NSString *) theDN

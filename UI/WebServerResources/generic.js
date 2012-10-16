@@ -279,7 +279,7 @@ function openMailTo(senderMailTo) {
 
     if (mailto.length > 0)
         openMailComposeWindow(ApplicationBaseURL
-                              + "../Mail/compose?mailto=" + encodeURIComponent(mailto)
+                              + "../Mail/compose?mailto=" + encodeURIComponent(Object.toJSON([mailto]))
                               + ((subject.length > 0)?"?subject=" + encodeURIComponent(subject):""));
 
     return false; /* stop following the link */
@@ -722,7 +722,6 @@ function popupMenu(event, menuId, target) {
                          visibility: "visible" });
 
         document.currentPopupMenu = popup;
-
         $(document.body).observe("mousedown", onBodyClickMenuHandler);
     }
 }
@@ -1495,7 +1494,7 @@ function getTopWindow() {
     var topWindow = null;
     var currentWindow = window;
     while (!topWindow) {
-        if (currentWindow.document.body.hasClassName("popup")
+        if ($(currentWindow.document.body).hasClassName("popup")
             && currentWindow.opener
             && currentWindow.opener.getTopWindow)
             currentWindow = currentWindow.opener;
@@ -1665,7 +1664,7 @@ function onPreferencesClick(event) {
         div.show(); //setStyle({display: "block"});
     }
     else {
-        var w = window.open(urlstr, "_blank",
+        var w = window.open(urlstr, "SOGoPreferences",
                             "width=580,height=450,resizable=1,scrollbars=0,location=0");
         w.opener = window;
         w.focus();
@@ -1963,15 +1962,15 @@ function _showAlertDialog(label) {
     dialog.appear({ duration: 0.2 });
 }
 
-function showConfirmDialog(title, label, callbackYes, callbackNo) {
+function showConfirmDialog(title, label, callbackYes, callbackNo, yesLabel, noLabel) {
     var div = $("bgDialogDiv");
     if (div && div.visible() && div.getOpacity() > 0)
-        dialogsStack.push(_showConfirmDialog.bind(this, title, label, callbackYes, callbackNo));
+        dialogsStack.push(_showConfirmDialog.bind(this, title, label, callbackYes, callbackNo, yesLabel, noLabel));
     else
-        _showConfirmDialog(title, label, callbackYes, callbackNo);
+        _showConfirmDialog(title, label, callbackYes, callbackNo, yesLabel, noLabel);
 }
 
-function _showConfirmDialog(title, label, callbackYes, callbackNo) {
+function _showConfirmDialog(title, label, callbackYes, callbackNo, yesLabel, noLabel) {
     var key = title;
     if (Object.isElement(label)) key += label.allTextContent();
     else key += label;
@@ -1988,8 +1987,8 @@ function _showConfirmDialog(title, label, callbackYes, callbackNo) {
     }
     else {
         var fields = createElement("p");
-        fields.appendChild(createButton(null, _("Yes"), callbackYes));
-        fields.appendChild(createButton(null, _("No"), callbackNo || disposeDialog));
+        fields.appendChild(createButton(null, _(yesLabel || "Yes"), callbackYes));
+        fields.appendChild(createButton(null, _(noLabel || "No"), callbackNo || disposeDialog));
         dialog = createDialog(null,
                               title,
                               label,
@@ -2098,7 +2097,7 @@ function disposeDialog() {
         dialogsStack.splice(0, 1);
         dialogFcn.delay(0.2);
     }
-    else {
+    else if ($('bgDialogDiv')) {
         var bgFade = Effect.Fade('bgDialogDiv', { duration: 0.2 });
         // By the end the background fade out, a new dialog
         // may need to be displayed.

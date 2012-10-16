@@ -34,44 +34,15 @@
 #import "MAPIStoreTasksContext.h"
 #import "MAPIStoreTasksMessage.h"
 #import "MAPIStoreTasksMessageTable.h"
+#import "NSString+MAPIStore.h"
 
 #import "MAPIStoreTasksFolder.h"
 
 #include <util/time.h>
 #include <gen_ndr/exchange.h>
+#include <mapistore/mapistore_errors.h>
 
 @implementation MAPIStoreTasksFolder
-
-- (id) initWithURL: (NSURL *) newURL
-         inContext: (MAPIStoreContext *) newContext
-{
-  SOGoUserFolder *userFolder;
-  SOGoAppointmentFolders *parentFolder;
-  WOContext *woContext;
-
-  if ((self = [super initWithURL: newURL
-                       inContext: newContext]))
-    {
-      woContext = [newContext woContext];
-      userFolder = [SOGoUserFolder objectWithName: [newURL user]
-                                      inContainer: MAPIApp];
-      [parentContainersBag addObject: userFolder];
-      [woContext setClientObject: userFolder];
-
-      parentFolder = [userFolder lookupName: @"Calendar"
-                                  inContext: woContext
-                                    acquire: NO];
-      [parentContainersBag addObject: parentFolder];
-      [woContext setClientObject: parentFolder];
-      
-      sogoObject = [parentFolder lookupName: @"personal"
-                                  inContext: woContext
-                                    acquire: NO];
-      [sogoObject retain];
-    }
-
-  return self;
-}
 
 - (MAPIStoreMessageTable *) messageTable
 {
@@ -79,17 +50,9 @@
   return [MAPIStoreTasksMessageTable tableForContainer: self];
 }
 
-- (EOQualifier *) componentQualifier
+- (NSString *) component
 {
-  static EOQualifier *componentQualifier = nil;
-
-  if (!componentQualifier)
-    componentQualifier
-      = [[EOKeyValueQualifier alloc] initWithKey: @"c_component"
-				operatorSelector: EOQualifierOperatorEqual
-					   value: @"vtodo"];
-
-  return componentQualifier;
+  return @"vtodo";
 }
 
 - (MAPIStoreMessage *) createMessage
@@ -155,6 +118,20 @@
     rights |= RoleNone; /* actually "folder visible" */
  
   return rights;
+}
+
+- (EOQualifier *) aclQualifier
+{
+  return [EOQualifier qualifierWithQualifierFormat:
+            [(SOGoAppointmentFolder *) sogoObject aclSQLListingFilter]];
+}
+
+- (int) getPidTagDefaultPostMessageClass: (void **) data
+                                inMemCtx: (TALLOC_CTX *) memCtx
+{
+  *data = [@"IPM.Task" asUnicodeInMemCtx: memCtx];
+
+  return MAPISTORE_SUCCESS;
 }
 
 @end

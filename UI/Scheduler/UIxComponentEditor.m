@@ -61,6 +61,7 @@
 #import <SOGo/SOGoUser.h>
 #import <SOGo/SOGoUserDefaults.h>
 #import <SOGo/SOGoUserManager.h>
+#import <SOGo/SOGoSource.h>
 #import <SOGo/SOGoPermissions.h>
 #import <SOGo/SOGoSystemDefaults.h>
 #import <SOGo/WOResourceManager+SOGo.h>
@@ -166,7 +167,7 @@ iRANGE(2);
 
       component = nil;
       componentCalendar = nil;
-      [self setPrivacy: @"PUBLIC"];
+      classification = nil;
       [self setIsCycleEndNever];
       componentOwner = @"";
       organizer = nil;
@@ -212,6 +213,7 @@ iRANGE(2);
   [ownerAsAttendee release];
   [comment release];
   [priority release];
+  [classification release];
   [categories release];
   [cycle release];
   [cycleEnd release];
@@ -248,9 +250,12 @@ iRANGE(2);
 {
   NSEnumerator *attendees;
   NSMutableDictionary *currentAttendeeData;
+  NSString *uid, *domain;
+  NSArray *contacts;
+  NSDictionary *contact;
   iCalPerson *currentAttendee;
-  NSString *uid;
   SOGoUserManager *um;
+  NSObject <SOGoSource> *source;
 
   jsonAttendees = [NSMutableDictionary new];
   um = [SOGoUserManager sharedUserManager];
@@ -271,6 +276,23 @@ iRANGE(2);
       if (uid != nil)
 	[currentAttendeeData setObject: uid 
 				forKey: @"uid"];
+      else
+        {
+          domain = [[context activeUser] domain];
+          contacts = [um fetchContactsMatching: [currentAttendee rfc822Email] inDomain: domain];
+          if ([contacts count] == 1)
+            {
+              contact = [contacts lastObject];
+              source = [contact objectForKey: @"source"];
+              if ([source conformsToProtocol: @protocol (SOGoDNSource)] &&
+                  [[(NSObject <SOGoDNSource>*) source MSExchangeHostname] length])
+                {
+                  uid = [NSString stringWithFormat: @"%@:%@", [[context activeUser] login],
+                              [contact valueForKey: @"c_uid"]];
+                  [currentAttendeeData setObject: uid forKey: @"uid"];
+                }
+            }
+        }
 
       [currentAttendeeData setObject: [[currentAttendee partStat] lowercaseString]
 			      forKey: @"partstat"];
@@ -591,10 +613,12 @@ iRANGE(2);
    doing this... for example, when the clientObject is set */
 - (void) setComponent: (iCalRepeatableEntityObject *) newComponent
 {
-  SOGoObject *co;
+  SOGoCalendarComponent *co;
   SOGoUserManager *um;
   NSString *owner, *ownerEmail;
   iCalRepeatableEntityObject *masterComponent;
+  SOGoUserDefaults *defaults;
+  NSString *tag;
 
   if (!component)
     {
@@ -608,7 +632,22 @@ iRANGE(2);
 	  ASSIGN (location, [component location]);
 	  ASSIGN (comment, [component comment]);
 	  ASSIGN (attachUrl, [[component attach] absoluteString]);
-	  ASSIGN (privacy, [component accessClass]);
+	  ASSIGN (classification, [component accessClass]);
+          if ([co isNew] && [classification length] == 0)
+            {
+              defaults = [[context activeUser] userDefaults];
+              tag = [co componentTag];
+              [classification release];
+              if ([tag isEqualToString: @"vevent"])
+                classification = [defaults calendarEventsDefaultClassification];
+              else
+                classification = [defaults calendarTasksDefaultClassification];
+              
+              if ([classification length] == 0)
+                classification = @"PUBLIC";
+              [classification retain];
+            }
+
 	  ASSIGN (priority, [component priority]);
 	  ASSIGN (status, [component status]);
           ASSIGN (categories, [component categories]);
@@ -680,7 +719,7 @@ iRANGE(2);
   return [self labelForKey: [NSString stringWithFormat: @"prio_%@", item]];
 }
 
-- (NSString *) itemPrivacyText
+- (NSString *) itemClassificationText
 {
   NSString *tag;
 
@@ -1359,7 +1398,7 @@ iRANGE(2);
   return [priority length] > 0;
 }
 
-- (NSArray *) privacyClasses
+- (NSArray *) classificationClasses
 {
   static NSArray *priorities = nil;
 
@@ -1373,14 +1412,14 @@ iRANGE(2);
   return priorities;
 }
 
-- (void) setPrivacy: (NSString *) _privacy
+- (void) setClassification: (NSString *) _classification
 {
-  ASSIGN (privacy, _privacy);
+  ASSIGN (classification, _classification);
 }
 
-- (NSString *) privacy
+- (NSString *) classification
 {
-  return privacy;
+  return classification;
 }
 
 - (void) setStatus: (NSString *) _status
@@ -2128,7 +2167,7 @@ RANGE(2);
   [component setLocation: location];
   [component setComment: comment];
   [component setAttach: attachUrl];
-  [component setAccessClass: privacy];
+  [component setAccessClass: classification];
   [component setCategories: categories];
   [self _handleAttendeesEdition];
   [self _handleOrganizer];

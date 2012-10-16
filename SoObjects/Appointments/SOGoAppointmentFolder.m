@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2007-2011 Inverse inc.
+  Copyright (C) 2007-2012 Inverse inc.
   Copyright (C) 2004-2005 SKYRIX Software AG
 
   This file is part of SOGo.
@@ -558,6 +558,11 @@ static NSNumber *sharedYes = nil;
     }
   else
     records = [NSArray array];
+  
+  if ([self _checkIfWeCanRememberRecords: fields])
+    {
+      [self _rememberRecords: records];
+    }
 
   return records;
 }
@@ -1820,7 +1825,7 @@ firstInstanceCalendarDateRange: (NGCalendarDateRange *) fir
 						 to: (NSCalendarDate *) to
 {
   SOGoUser *user;
-  NSString *login, *calendarData;
+  NSString *login, *contactId, *calendarData;
   SOGoFreeBusyObject *freebusy;
 
   login = [recipient uid];
@@ -1833,7 +1838,20 @@ firstInstanceCalendarDateRange: (NGCalendarDateRange *) fir
       calendarData = [freebusy contentAsStringWithMethod: @"REPLY"
                                                   andUID: uid
                                             andOrganizer: organizer
+                                              andContact: nil
                                                     from: start to: to];
+    }
+  else if ((contactId = [recipient contactIDInContext: context]))
+    {
+      user = [context activeUser];
+      freebusy = [[user homeFolderInContext: context]
+		       freeBusyObject: @"freebusy.ifb"
+                            inContext: context];
+      calendarData = [freebusy contentAsStringWithMethod: @"REPLY"
+                                                  andUID: uid
+                                            andOrganizer: organizer
+                                              andContact: contactId
+                                                    from: start to: to];      
     }
   else
     {
@@ -1947,8 +1965,8 @@ firstInstanceCalendarDateRange: (NGCalendarDateRange *) fir
     tags = [self caldavFreeBusyRequest: (iCalFreeBusy *) element];
   else if ([tag isEqualToString: @"VEVENT"])
     tags = [self caldavEventRequest: (iCalEvent *) element
-		 withContent: iCalString
-		 from: originator to: recipients];
+                        withContent: iCalString
+                               from: originator to: recipients];
   else
     tags = nil;
 
@@ -2597,11 +2615,6 @@ firstInstanceCalendarDateRange: (NGCalendarDateRange *) fir
 - (NSString *) folderType
 {
   return @"Appointment";
-}
-
-- (NSString *) outlookFolderClass
-{
-  return @"IPF.Appointment";
 }
 
 - (BOOL) isActive

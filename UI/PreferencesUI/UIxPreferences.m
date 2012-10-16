@@ -445,6 +445,46 @@
   [userDefaults setDefaultCalendar: newValue];
 }
 
+- (NSArray *) calendarClassificationsList
+{
+  static NSArray *classifications = nil;
+
+  if (!classifications)
+    classifications = [[NSArray alloc] initWithObjects:
+                                         @"PUBLIC",
+                                       @"CONFIDENTIAL",
+                                       @"PRIVATE",
+                                       nil];
+
+  return classifications;
+}
+
+- (NSString *) itemClassificationText
+{
+  return [self labelForKey: [NSString stringWithFormat: @"%@_item",
+                                      item]];
+}
+
+- (void) setEventsDefaultClassification: (NSString *) newValue
+{
+  [userDefaults setCalendarEventsDefaultClassification: newValue];
+}
+
+- (NSString *) eventsDefaultClassification
+{
+  return [userDefaults calendarEventsDefaultClassification];
+}
+
+- (void) setTasksDefaultClassification: (NSString *) newValue
+{
+  [userDefaults setCalendarTasksDefaultClassification: newValue];
+}
+
+- (NSString *) tasksDefaultClassification
+{
+  return [userDefaults calendarTasksDefaultClassification];
+}
+
 - (NSArray *) hoursList
 {
   static NSMutableArray *hours = nil;
@@ -914,7 +954,10 @@
 
   time = [[vacationOptions objectForKey: @"endDate"] intValue];
 
-  return [NSCalendarDate dateWithTimeIntervalSince1970: time];
+  if (time > 0)
+    return [NSCalendarDate dateWithTimeIntervalSince1970: time];
+  else
+    return [NSCalendarDate calendarDate];
 }
 
 /* mail forward */

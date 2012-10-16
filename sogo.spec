@@ -17,7 +17,14 @@ Prefix:       /usr
 AutoReqProv:  off
 Requires:     gnustep-base >= 1.23, sope%{sope_major_version}%{sope_minor_version}-core, httpd, sope%{sope_major_version}%{sope_minor_version}-core, sope%{sope_major_version}%{sope_minor_version}-appserver, sope%{sope_major_version}%{sope_minor_version}-ldap, sope%{sope_major_version}%{sope_minor_version}-cards >= %{sogo_version}, sope%{sope_major_version}%{sope_minor_version}-gdl1-contentstore >= %{sogo_version}, sope%{sope_major_version}%{sope_minor_version}-sbjson, memcached, libmemcached
 BuildRoot:    %{_tmppath}/%{name}-%{version}-%{release}
-BuildPreReq:  gcc-objc gnustep-base gnustep-make sope%{sope_major_version}%{sope_minor_version}-appserver-devel sope%{sope_major_version}%{sope_minor_version}-core-devel sope%{sope_major_version}%{sope_minor_version}-ldap-devel sope%{sope_major_version}%{sope_minor_version}-mime-devel sope%{sope_major_version}%{sope_minor_version}-xml-devel sope%{sope_major_version}%{sope_minor_version}-gdl1-devel sope%{sope_major_version}%{sope_minor_version}-sbjson-devel libmemcached-devel %{?oc_build_depends}
+BuildRequires:  gcc-objc gnustep-base gnustep-make sope%{sope_major_version}%{sope_minor_version}-appserver-devel sope%{sope_major_version}%{sope_minor_version}-core-devel sope%{sope_major_version}%{sope_minor_version}-ldap-devel sope%{sope_major_version}%{sope_minor_version}-mime-devel sope%{sope_major_version}%{sope_minor_version}-xml-devel sope%{sope_major_version}%{sope_minor_version}-gdl1-devel sope%{sope_major_version}%{sope_minor_version}-sbjson-devel libmemcached-devel %{?oc_build_depends}
+
+
+# Required by MS Exchange freebusy lookups
+%{?el5:Requires: curl}
+%{?el5:BuildRequires: curl-devel}
+%{?el6:Requires: libcurl}
+%{?el6:BuildRequires: libcurl-devel}
 
 %description
 SOGo is a groupware server built around OpenGroupware.org (OGo) and
@@ -166,6 +173,7 @@ make DESTDIR=${RPM_BUILD_ROOT} \
      CC="$cc" LDFLAGS="$ldflags" \
      install
 mkdir -p ${RPM_BUILD_ROOT}/etc/init.d
+mkdir -p ${RPM_BUILD_ROOT}/etc/cron.d
 mkdir -p ${RPM_BUILD_ROOT}/etc/cron.daily
 mkdir -p ${RPM_BUILD_ROOT}/etc/logrotate.d
 mkdir -p ${RPM_BUILD_ROOT}/etc/sysconfig
@@ -175,6 +183,7 @@ mkdir -p ${RPM_BUILD_ROOT}/var/run/sogo
 mkdir -p ${RPM_BUILD_ROOT}/var/log/sogo
 mkdir -p ${RPM_BUILD_ROOT}/var/spool/sogo
 cat Apache/SOGo.conf | sed -e "s@/lib/@/%{_lib}/@g" > ${RPM_BUILD_ROOT}/etc/httpd/conf.d/SOGo.conf
+install -m 600 Scripts/sogo.cron ${RPM_BUILD_ROOT}/etc/cron.d/sogo
 cp Scripts/tmpwatch ${RPM_BUILD_ROOT}/etc/cron.daily/sogo-tmpwatch
 chmod 755 ${RPM_BUILD_ROOT}/etc/cron.daily/sogo-tmpwatch
 cp Scripts/logrotate ${RPM_BUILD_ROOT}/etc/logrotate.d/sogo
@@ -222,9 +231,10 @@ rm -fr ${RPM_BUILD_ROOT}
 %{_libdir}/GNUstep/OCSTypeModels
 %{_libdir}/GNUstep/WOxElemBuilders-*
 
+%config(noreplace) %{_sysconfdir}/cron.d/sogo
 %config(noreplace) %{_sysconfdir}/httpd/conf.d/SOGo.conf
 %config(noreplace) %{_sysconfdir}/sysconfig/sogo
-%doc ChangeLog NEWS Scripts/sql-update-20070724.sh Scripts/sql-update-20070822.sh Scripts/sql-update-20080303.sh Scripts/sql-update-101_to_102.sh Scripts/sql-update-1.2.2_to_1.3.0.sh Scripts/sql-update-1.2.2_to_1.3.0-mysql.sh Scripts/sql-update-1.3.3_to_1.3.4.sh Scripts/sql-update-1.3.3_to_1.3.4-mysql.sh
+%doc ChangeLog NEWS Scripts/*sh Scripts/updates.php
 
 %files -n sogo-tool
 %{_sbindir}/sogo-tool
@@ -279,6 +289,8 @@ if ! id sogo >& /dev/null; then /usr/sbin/adduser sogo > /dev/null 2>&1; fi
 /bin/chown sogo /var/log/sogo
 /bin/chown sogo /var/spool/sogo
 /bin/chmod 700 /var/spool/sogo
+# update timestamp on imgs,css,js to let apache know the files changed
+find %{_libdir}/GNUstep/SOGo/WebServerResources  -exec touch {} \;
 /sbin/chkconfig --add sogod
 
 %preun
@@ -299,6 +311,15 @@ fi
 
 # ********************************* changelog *************************
 %changelog
+* Fri Mar 16 2012 Jean Raby <jraby@inverse.ca>
+- %post: update timestamp on imgs,css,js to let apache know the files changed
+
+* Fri Feb 16 2012 Jean Raby <jraby@inverse.ca>
+- Use globbing to include all sql upgrade scripts instead of listing them all
+
+* Tue Jan 10 2012 Jean Raby <jraby@inverse.ca>
+- /etc/cron.d/sogo
+
 * Thu Oct 27 2011 Wolfgang Sourdeau <wsourdeau@inverse.ca>
 - make build of sogo-openchange-backend conditional to sogo_version >= 2
 

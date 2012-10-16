@@ -248,7 +248,7 @@ static NSString *defaultUserID =  @"anyone";
   if (!filenames)
     {
       filenames = [NSMutableArray new];
-      if ([[self imap4Connection] doesMailboxExistAtURL: [self imap4URL]])
+      if ([self exists])
         {
           uids = [self fetchUIDsMatchingQualifier: nil sortOrdering: @"DATE"];
           if (![uids isKindOfClass: [NSException class]])
@@ -265,6 +265,59 @@ static NSString *defaultUserID =  @"anyone";
     }
 
   return filenames;
+}
+
+- (NSException *) renameTo: (NSString *) newName
+{
+  NSException *error;
+  SOGoMailFolder *inbox;
+  NSURL *destURL;
+  NSString *path;
+  NGImap4Client *client;
+
+  if ([newName length] > 0)
+    {
+      [self imap4URL];
+
+      if ([self imap4Connection])
+        {
+          client = [imap4 client];
+
+          inbox = [[self mailAccountFolder] inboxFolderInContext: context];
+          [client select: [inbox absoluteImap4Name]];
+
+          path = [[imap4URL path] stringByDeletingLastPathComponent];
+          if (![path hasSuffix: @"/"])
+            path = [path stringByAppendingString: @"/"];
+          destURL = [[NSURL alloc] initWithScheme: [imap4URL scheme]
+                                             host: [imap4URL host]
+                                             path: [NSString stringWithFormat: @"%@%@",
+                                                             path, newName]];
+          [destURL autorelease];
+          error = [imap4 moveMailboxAtURL: imap4URL
+                                    toURL: destURL];
+          if (!error)
+            {
+              ASSIGN (imap4URL, nil);
+              ASSIGN (nameInContainer,
+                      ([NSString stringWithFormat: @"folder%@", [newName asCSSIdentifier]]));
+
+              // We unsubscribe to the old one, and subscribe back to the new one
+              [client subscribe: [destURL path]];
+              [client unsubscribe: [imap4URL path]];
+            }
+        }
+      else
+        error = [NSException exceptionWithName: @"SOGoMailException"
+                                        reason: @"IMAP connection is invalid"
+                                      userInfo: nil];
+    }
+  else
+    error = [NSException exceptionWithName: @"SOGoMailException"
+                                    reason: @"given name is empty"
+                                  userInfo: nil];
+
+  return error;
 }
 
 /* messages */
@@ -343,33 +396,41 @@ static NSString *defaultUserID =  @"anyone";
 	    error = (NSException *) trashFolder;
 	  else
 	    {
-	      client = [[self imap4Connection] client];
-	      [imap4 selectFolder: [self imap4URL]];
-	      folderName = [imap4 imap4FolderNameForURL: [trashFolder imap4URL]];
-	      b = YES;
+              if ([self imap4Connection])
+                {
+                  error = nil;
+                  client = [imap4 client];
+                  [imap4 selectFolder: [self imap4URL]];
+                  folderName = [imap4 imap4FolderNameForURL: [trashFolder imap4URL]];
+                  b = YES;
 	      
-	      // If we are deleting messages within the Trash folder itself, we
-	      // do not, of course, try to move messages to the Trash folder.
-	      if ([folderName isEqualToString: [self relativeImap4Name]])
-                {
-                  *withTrash = NO;
-                }
-              else
-                {
-		  // If our Trash folder doesn't exist when we try to copy messages
-		  // to it, we create it.
-		  result = [[client status: folderName  flags: [NSArray arrayWithObject: @"UIDVALIDITY"]]
-			     objectForKey: @"result"];
+                  // If we are deleting messages within the Trash folder itself, we
+                  // do not, of course, try to move messages to the Trash folder.
+                  if ([folderName isEqualToString: [self relativeImap4Name]])
+                    {
+                      *withTrash = NO;
+                    }
+                  else
+                    {
+                      // If our Trash folder doesn't exist when we try to copy messages
+                      // to it, we create it.
+                      result = [[client status: folderName  flags: [NSArray arrayWithObject: @"UIDVALIDITY"]]
+                                 objectForKey: @"result"];
 		  
-		  if (![result boolValue])
-		    [[self imap4Connection] createMailbox: folderName
-						    atURL: [[self mailAccountFolder] imap4URL]];
+                      if (![result boolValue])
+                        [imap4 createMailbox: folderName
+                                       atURL: [[self mailAccountFolder] imap4URL]];
 		  
-		  result = [[client copyUids: uids toFolder: folderName]
-			     objectForKey: @"result"];
+                      result = [[client copyUids: uids toFolder: folderName]
+                                 objectForKey: @"result"];
 		  
-		  b = [result boolValue];
+                      b = [result boolValue];
+                    }
 		}
+              else
+                error = [NSException exceptionWithName: @"SOGoMailException"
+                                                reason: @"IMAP connection is invalid"
+                                              userInfo: nil];
 	    }
 	}
       else
@@ -421,7 +482,7 @@ static NSString *defaultUserID =  @"anyone";
 {
   NSException *error;
   NSFileManager *fm;
-  NSString *spoolPath, *fileName, *zipPath, *qpFileName;
+  NSString *spoolPath, *fileName, *baseName, *extension, *zipPath, *qpFileName;
   NSDictionary *msgs;
   NSArray *messages;
   NSData *content, *zipContent;
@@ -486,7 +547,17 @@ static NSString *defaultUserID =  @"anyone";
   }
   
   response = [context response];
-  qpFileName = [archiveName asQPSubjectString: @"utf-8"];
+
+  baseName = [archiveName stringByDeletingPathExtension];
+  extension = [archiveName pathExtension];
+  if ([extension length] > 0)
+    extension = [@"." stringByAppendingString: extension];
+  else
+    extension = @"";
+
+  qpFileName = [NSString stringWithFormat: @"%@%@",
+                         [baseName asQPSubjectString: @"utf-8"],
+                         extension];
   [response setHeader: [NSString stringWithFormat: @"application/zip;"
                                  @" name=\"%@\"",
                                  qpFileName]
@@ -508,7 +579,7 @@ static NSString *defaultUserID =  @"anyone";
   NSString *archiveName;
   EOQualifier *notDeleted;
 
-  if ([[self imap4Connection] doesMailboxExistAtURL: [self imap4URL]])
+  if ([self exists])
     {
       notDeleted = [EOQualifier qualifierWithQualifierFormat:
                                   @"(not (flags = %@))", @"deleted"];
@@ -555,23 +626,32 @@ static NSString *defaultUserID =  @"anyone";
             }
 
           client = [[self imap4Connection] client];
-          [imap4 selectFolder: [self imap4URL]];
+          if (client)
+            {
+              [imap4 selectFolder: [self imap4URL]];
   
-          // We make sure the destination IMAP folder exist, if not, we create it.
-          result = [[client status: imapDestinationFolder
-                             flags: [NSArray arrayWithObject: @"UIDVALIDITY"]]
-                     objectForKey: @"result"];
-          if (![result boolValue])
-            result = [[self imap4Connection] createMailbox: imapDestinationFolder
-                                                     atURL: [[self mailAccountFolder] imap4URL]];
-          if (!result || [result boolValue])
-            result = [client copyUids: uids toFolder: imapDestinationFolder];
+              // We make sure the destination IMAP folder exist, if not, we create it.
+              result = [[client status: imapDestinationFolder
+                                 flags: [NSArray arrayWithObject: @"UIDVALIDITY"]]
+                         objectForKey: @"result"];
+              if (![result boolValue])
+                result = [[self imap4Connection] createMailbox: imapDestinationFolder
+                                                         atURL: [[self mailAccountFolder] imap4URL]];
+              if (!result || [result boolValue])
+                result = [client copyUids: uids toFolder: imapDestinationFolder];
 
-          if ([[result valueForKey: @"result"] boolValue])
-            result = nil;
+              if ([[result valueForKey: @"result"] boolValue])
+                result = nil;
+              else
+                result = [NSException exceptionWithHTTPStatus: 500
+                                                       reason: [[[result objectForKey: @"RawResponse"]
+                                                                  objectForKey: @"ResponseResult"]
+                                                                 objectForKey: @"description"]];
+            }
           else
-            result = [NSException exceptionWithHTTPStatus: 500
-                                                   reason: [[[result objectForKey: @"RawResponse"] objectForKey: @"ResponseResult"] objectForKey: @"description"]];
+            result = [NSException exceptionWithName: @"SOGoMailException"
+                                             reason: @"IMAP connection is invalid"
+                                           userInfo: nil];
         }
       else
         result = [NSException exceptionWithHTTPStatus: 500
@@ -592,18 +672,24 @@ static NSString *defaultUserID =  @"anyone";
   NGImap4Client *client;
 
   client = [[self imap4Connection] client];
-  
-  result = [self copyUIDs: uids toFolder: destinationFolder inContext: localContext];
-  if (![result isNotNull])
+  if (client)
     {
-      result = [client storeFlags: [NSArray arrayWithObject: @"Deleted"]
-                          forUIDs: uids addOrRemove: YES];
-      if ([[result valueForKey: @"result"] boolValue])
-	{
-	  [self markForExpunge];
-	  result = nil;
-	}
+      result = [self copyUIDs: uids toFolder: destinationFolder inContext: localContext];
+      if (![result isNotNull])
+        {
+          result = [client storeFlags: [NSArray arrayWithObject: @"Deleted"]
+                              forUIDs: uids addOrRemove: YES];
+          if ([[result valueForKey: @"result"] boolValue])
+            {
+              [self markForExpunge];
+              result = nil;
+            }
+        }
     }
+  else
+    result = [NSException exceptionWithName: @"SOGoMailException"
+                                     reason: @"IMAP connection is invalid"
+                                   userInfo: nil];
 
   return result;
 }
@@ -675,7 +761,7 @@ static NSString *defaultUserID =  @"anyone";
 {
   // We check for the existence of the IMAP folder (likely to be the
   // Sent mailbox) prior to appending messages to it.
-  if ([[self imap4Connection] doesMailboxExistAtURL: [self imap4URL]]
+  if ([self exists]
       || ![[self imap4Connection] createMailbox: [[self imap4Connection] imap4FolderNameForURL: [self imap4URL]]
                                           atURL: [[self mailAccountFolder] imap4URL]])
     return [[self imap4Connection] postData: _data flags: _flags
@@ -687,7 +773,15 @@ static NSString *defaultUserID =  @"anyone";
 
 - (NSException *) expunge
 {
-  return [[self imap4Connection] expungeAtURL: [self imap4URL]];
+  NSException *error;
+
+  if ([self imap4Connection])
+    error = [imap4 expungeAtURL: [self imap4URL]];
+  else
+    error = [NSException exceptionWithName: @"SOGoMailException"
+                                    reason: @"IMAP connection is invalid"
+                                  userInfo: nil];
+  return error;
 }
 
 - (void) markForExpunge
@@ -743,8 +837,17 @@ static NSString *defaultUserID =  @"anyone";
 
 - (NSException *) addFlagsToAllMessages: (id) _f
 {
-  return [[self imap4Connection] addFlags:_f 
-				 toAllMessagesInURL: [self imap4URL]];
+  NSException *error;
+
+  if ([self imap4Connection])
+    error = [imap4 addFlags:_f 
+                   toAllMessagesInURL: [self imap4URL]];
+  else
+    error = [NSException exceptionWithName: @"SOGoMailException"
+                                    reason: @"IMAP connection is invalid"
+                                  userInfo: nil];
+
+  return error;
 }
 
 /* name lookup */
@@ -788,7 +891,7 @@ static NSString *defaultUserID =  @"anyone";
                                                   inContainer: self];
         }
       else if (isdigit ([_key characterAtIndex: 0])
-               && [[self imap4Connection] doesMailboxExistAtURL: [self imap4URL]])
+               && [self exists])
         {
           obj = [SOGoMailObject objectWithName: _key inContainer: self];
           if ([_key hasSuffix: @".eml"])
@@ -813,7 +916,21 @@ static NSString *defaultUserID =  @"anyone";
 - (NSException *) davCreateCollection: (NSString *) _name
 			    inContext: (id) _ctx
 {
-  return [[self imap4Connection] createMailbox:_name atURL:[self imap4URL]];
+  NSException *error;
+
+  if ([self imap4Connection])
+    error = [imap4 createMailbox:_name atURL:[self imap4URL]];
+  else
+    error = [NSException exceptionWithName: @"SOGoMailException"
+                                    reason: @"IMAP connection is invalid"
+                                  userInfo: nil];
+
+  return error;
+}
+
+- (BOOL) exists
+{
+  return [[self imap4Connection] doesMailboxExistAtURL: [self imap4URL]];
 }
 
 - (BOOL) create
@@ -821,29 +938,43 @@ static NSString *defaultUserID =  @"anyone";
   NSException *error;
   BOOL rc;
 
-  [self imap4Connection];
-  error = [imap4 createMailbox: [self relativeImap4Name]
-                         atURL: [container imap4URL]];
-  if (error)
-    rc = NO;
-  else
+  if ([self imap4Connection])
     {
-      [[imap4 client] subscribe: [self absoluteImap4Name]];
-      rc = YES;
+      error = [imap4 createMailbox: [self relativeImap4Name]
+                             atURL: [container imap4URL]];
+      if (error)
+        rc = NO;
+      else
+        {
+          [[imap4 client] subscribe: [self absoluteImap4Name]];
+          rc = YES;
+        }
     }
+  else
+    rc = NO;
 
   return rc;
 }
 
 - (NSException *) delete
 {
-  return [[self imap4Connection] deleteMailboxAtURL:[self imap4URL]];
+  NSException *error;
+
+  if ([self imap4Connection])
+    error = [imap4 deleteMailboxAtURL: [self imap4URL]];
+  else
+    error = [NSException exceptionWithName: @"SOGoMailException"
+                                    reason: @"IMAP connection is invalid"
+                                  userInfo: nil];
+
+  return error;
 }
 
 - (NSException *) davMoveToTargetObject: (id) _target
 				newName: (NSString *) _name
 			      inContext: (id)_ctx
 {
+  NSException *error;
   NSURL *destImapURL;
   
   if ([_name length] == 0) { /* target already exists! */
@@ -868,9 +999,16 @@ static NSString *defaultUserID =  @"anyone";
   [self logWithFormat:@"TODO: should move collection as '%@' to: %@",
 	[[self imap4URL] absoluteString], 
 	[destImapURL absoluteString]];
-  
-  return [[self imap4Connection] moveMailboxAtURL:[self imap4URL] 
-				 toURL:destImapURL];
+
+  if ([self imap4Connection])
+    error = [imap4 moveMailboxAtURL: [self imap4URL] 
+                              toURL: destImapURL];
+  else
+    error = [NSException exceptionWithName: @"SOGoMailException"
+                                    reason: @"IMAP connection is invalid"
+                                  userInfo: nil];
+
+  return error;
 }
 
 - (NSException *) davCopyToTargetObject: (id) _target
@@ -887,32 +1025,6 @@ static NSString *defaultUserID =  @"anyone";
 - (NSString *) folderType
 {
   return @"Mail";
-}
-
-- (NSString *) outlookFolderClass
-{
-  // TODO: detect Trash/Sent/Drafts folders
-  SOGoMailAccount *account;
-  NSString *name;
-
-  if (!folderType)
-    {
-      account = [self mailAccountFolder];
-      name = [self traversalFromMailAccount];
-
-      if ([name isEqualToString: [account trashFolderNameInContext: nil]])
-	folderType = @"IPF.Trash";
-      else if ([name
-		 isEqualToString: [account inboxFolderNameInContext: nil]])
-	folderType = @"IPF.Inbox";
-      else if ([name
-		 isEqualToString: [account sentFolderNameInContext: nil]])
-	folderType = @"IPF.Sent";
-      else
-	folderType = @"IPF.Folder";
-    }
-  
-  return folderType;
 }
 
 /* acls */

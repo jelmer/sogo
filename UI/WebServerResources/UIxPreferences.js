@@ -34,6 +34,10 @@ function savePreferences(sender) {
             showAlertDialog(_("Please specify your message and your email addresses for which you want to enable auto reply."));
             sendForm = false;
         }
+	if ($("autoReplyText").value.strip().endsWith('\n.')) {
+	  showAlertDialog(_("Your vacation message must not end with a single dot on a line."));
+	  sendForm = false;
+	}
         if ($("enableVacationEndDate") && $("enableVacationEndDate").checked) {
             var endDate = new Date($("vacationEndDate_date").value);
             var now = new Date();
@@ -82,9 +86,11 @@ function prototypeIfyFilters() {
             }
         }
 
-        newFilter.actions = $([]);
-        for (var j = 0; j < filter.actions.length; j++) {
-            newFilter.actions.push($(filter.actions[j]));
+        if (filter.actions) {
+            newFilter.actions = $([]);
+            for (var j = 0; j < filter.actions.length; j++) {
+                newFilter.actions.push($(filter.actions[j]));
+            }
         }
         newFilters.push(newFilter);
     }
@@ -109,10 +115,10 @@ function _setupEvents() {
     // We check for non-null elements as replyPlacementList and composeMessagesType
     // might not be present if ModulesConstraints disable those elements
     if ($("replyPlacementList"))
-    	$("replyPlacementList").observe ("change", onReplyPlacementListChange);
+    	$("replyPlacementList").observe("change", onReplyPlacementListChange);
 
     if ($("composeMessagesType"))
-    	$("composeMessagesType").observe ("change", onComposeMessagesTypeChange);
+    	$("composeMessagesType").observe("change", onComposeMessagesTypeChange);
 
     // Note: we also monitor changes to the calendar categories.
     // See functions endEditable and onColorPickerChoice.
@@ -188,15 +194,24 @@ function initPreferences() {
     }
 
     // Disable placement (after) if composing in HTML
-    if ($("composeMessagesType")) {
-        if ($("composeMessagesType").value == 1) {
-            $("replyPlacementList").selectedIndex = 0;
-            $("replyPlacementList").disabled = 1;
+    var button = $("composeMessagesType");
+    if (button) {
+        if (button.value == 1) {
+            $("replyPlacementList").value = 0;
+            $("replyPlacementList").disabled = true;
         }
-        onReplyPlacementListChange ();
+        onReplyPlacementListChange();
+        button.on("change", function(event) {
+            if (this.value == 0)
+                $("replyPlacementList").disabled = false;
+            else {
+                $("replyPlacementList").value = 0;
+                $("replyPlacementList").disabled = true;
+            }
+        });
     }
 
-    var button = $("addDefaultEmailAddresses");
+    button = $("addDefaultEmailAddresses");
     if (button)
         button.observe("click", addDefaultEmailAddresses);
 
@@ -349,11 +364,12 @@ function onFilterMoveDown(event) {
 function onFilterEdit(event) {
     _editFilter(this.rowIndex - 1);
     event.stop();
+
+    return false;
 }
 
 function copyFilter(originalFilter) {
     var newFilter = {};
-
     newFilter.name = originalFilter.name;
     newFilter.match = originalFilter.match;
     newFilter.active = originalFilter.active;
@@ -388,7 +404,8 @@ function getSieveCapabilitiesFromEditor() {
 }
 
 function getFilterFromEditor(filterId) {
-    return copyFilter(filters[filterId]);
+    var filter = copyFilter(filters[filterId]);
+    return Object.toJSON(filter);
 }
 
 function setupMailboxesFromJSON(jsonResponse) {
@@ -531,8 +548,11 @@ function onMailIdentitySignatureClick(event) {
                                       label,
                                       fields,
                                       "none");
+            if (Prototype.Browser.IE)
+                // Overwrite some fixes from iefixes.css
+                dialog.setStyle({ width: 'auto', marginLeft: 'auto' });
+
             document.body.appendChild(dialog);
-            dialog.show();
             dialogs[dialogId] = dialog;
 
             if ($("composeMessagesType").value != 0) {
@@ -556,12 +576,34 @@ function onMailIdentitySignatureClick(event) {
             area.value = identity["signature"];
         else
             area.value = "";
+
+
         dialog.show();
         $("bgDialogDiv").show();
-        if (!CKEDITOR.instances["signature"])
+        if (CKEDITOR.instances["signature"])
+                focusCKEditor();
+        else
             area.focus();
-        event.stop();
+        Event.stop(event);
     }
+}
+
+function focusCKEditor() {
+    if (CKEDITOR.status != 'basic_ready')
+        setTimeout("focusCKEditor()", 100);
+    else
+        // CKEditor reports being ready but it's still not focusable;
+        // we wait for a few more milliseconds
+        setTimeout("CKEDITOR.instances.signature.focus()", 500);
+}
+
+function hideSignature() {
+    if (CKEDITOR.status != 'basic_ready')
+        setTimeout("hideSignature()", 100);
+    else
+        // CKEditor reports being ready but it's not;
+        // we wait for a few more milliseconds
+        setTimeout('disposeDialog("signatureDialog")', 200);
 }
 
 function onMailIdentitySignatureOK(event) {
@@ -577,8 +619,7 @@ function onMailIdentitySignatureOK(event) {
                    : $("signature").value);
     identity["signature"] = content;
     displayAccountSignature(mailAccount);
-    dialog.hide();
-    $("bgDialogDiv").hide();
+    hideSignature();
     dialog.mailAccount = null;
     var hasChanged = $("hasChanged");
     hasChanged.value = "1";

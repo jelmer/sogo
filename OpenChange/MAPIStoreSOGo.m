@@ -23,6 +23,7 @@
 /* OpenChange SOGo storage backend */
 
 #import <Foundation/NSAutoreleasePool.h>
+#import <Foundation/NSDebug.h>
 #import <Foundation/NSFileHandle.h>
 #import <Foundation/NSProcessInfo.h>
 #import <Foundation/NSUserDefaults.h>
@@ -42,19 +43,30 @@
 #import "MAPIStoreObject.h"
 #import "MAPIStoreTable.h"
 #import "NSObject+MAPIStore.h"
+#import "NSString+MAPIStore.h"
 
-#undef DEBUG
-#include <stdbool.h>
-#include <talloc.h>
-#include <gen_ndr/exchange.h>
 #include <mapistore/mapistore.h>
 #include <mapistore/mapistore_errors.h>
 
-static int
+static Class MAPIStoreContextK = Nil;
+static BOOL leakDebugging = NO;
+
+static enum mapistore_error
 sogo_backend_unexpected_error()
 {
   NSLog (@"  UNEXPECTED WEIRDNESS: RECEIVED NO OBJECT");
+  abort();
   return MAPISTORE_SUCCESS;
+}
+
+static void
+sogo_backend_atexit (void)
+{
+  NSAutoreleasePool *pool;
+
+  pool = [NSAutoreleasePool new];
+  NSLog (@"allocated classes:\n%s", GSDebugAllocationList (YES));
+  [pool release];
 }
 
 /**
@@ -62,7 +74,7 @@ sogo_backend_unexpected_error()
 
    \return MAPISTORE_SUCCESS on success
 */
-static int
+static enum mapistore_error
 sogo_backend_init (void)
 {
   NSAutoreleasePool *pool;
@@ -85,9 +97,17 @@ sogo_backend_init (void)
 
   [SOGoSystemDefaults sharedSystemDefaults];
 
-  // /* We force the plugin to base its configuration on the SOGo tree. */
+  /* We force the plugin to base its configuration on the SOGo tree. */
   ud = [NSUserDefaults standardUserDefaults];
   [ud registerDefaults: [ud persistentDomainForName: @"sogod"]];
+
+  if (!leakDebugging && [ud boolForKey: @"SOGoDebugLeaks"])
+    {
+      NSLog (@"  leak debugging on");
+      GSDebugAllocationActive (YES);
+      atexit (sogo_backend_atexit);
+      leakDebugging = YES;
+    }
 
   registry = [SoProductRegistry sharedProductRegistry];
   [registry scanForProductsInDirectory: SOGO_BUNDLES_DIR];
@@ -102,6 +122,8 @@ sogo_backend_init (void)
   [[SOGoCache sharedCache] disableRequestsCache];
   [[SOGoCache sharedCache] disableLocalCache];
 
+  MAPIStoreContextK = NSClassFromString (@"MAPIStoreContext");
+
   [pool release];
 
   return MAPISTORE_SUCCESS;
@@ -115,14 +137,13 @@ sogo_backend_init (void)
    \param private_data pointer to the private backend context 
 */
 
-static int
+static enum mapistore_error
 sogo_backend_create_context(TALLOC_CTX *mem_ctx,
                             struct mapistore_connection_info *conn_info,
                             struct tdb_wrap *indexingTdb,
                             const char *uri, void **context_object)
 {
   NSAutoreleasePool *pool;
-  Class MAPIStoreContextK;
   MAPIStoreContext *context;
   int rc;
 
@@ -130,7 +151,6 @@ sogo_backend_create_context(TALLOC_CTX *mem_ctx,
 
   pool = [NSAutoreleasePool new];
 
-  MAPIStoreContextK = NSClassFromString (@"MAPIStoreContext");
   if (MAPIStoreContextK)
     {
       rc = [MAPIStoreContextK openContext: &context
@@ -139,6 +159,71 @@ sogo_backend_create_context(TALLOC_CTX *mem_ctx,
                            andTDBIndexing: indexingTdb];
       if (rc == MAPISTORE_SUCCESS)
         *context_object = [context tallocWrapper: mem_ctx];
+    }
+  else
+    rc = MAPISTORE_ERROR;
+
+  [pool release];
+
+  return rc;
+}
+
+static enum mapistore_error
+sogo_backend_create_root_folder (const char *username,
+                                 enum mapistore_context_role role,
+                                 uint64_t fid, const char *name,
+                                 // struct tdb_wrap *indexingTdb,
+                                 TALLOC_CTX *mem_ctx, char **mapistore_urip)
+{
+  NSAutoreleasePool *pool;
+  NSString *userName, *folderName;
+  NSString *mapistoreUri;
+  int rc;
+
+  DEBUG(0, ("[SOGo: %s:%d]\n", __FUNCTION__, __LINE__));
+
+  pool = [NSAutoreleasePool new];
+
+  if (MAPIStoreContextK)
+    {
+      userName = [NSString stringWithUTF8String: username];
+      folderName = [NSString stringWithUTF8String: name];
+      rc = [MAPIStoreContextK createRootFolder: &mapistoreUri
+                                       withFID: fid
+                                       andName: folderName
+                                       forUser: userName
+                                      withRole: role];
+      if (rc == MAPISTORE_SUCCESS)
+        *mapistore_urip = [mapistoreUri asUnicodeInMemCtx: mem_ctx];
+    }
+  else
+    rc = MAPISTORE_ERROR;
+
+  [pool release];
+
+  return rc;
+}
+
+static enum mapistore_error
+sogo_backend_list_contexts(const char *username, struct tdb_wrap *indexingTdb,
+                           TALLOC_CTX *mem_ctx,
+                           struct mapistore_contexts_list **contexts_listp)
+{
+  NSAutoreleasePool *pool;
+  NSString *userName;
+  int rc;
+
+  DEBUG(0, ("[SOGo: %s:%d]\n", __FUNCTION__, __LINE__));
+
+  pool = [NSAutoreleasePool new];
+
+  if (MAPIStoreContextK)
+    {
+      userName = [NSString stringWithUTF8String: username];
+      *contexts_listp = [MAPIStoreContextK listAllContextsForUser: userName
+                                                  withTDBIndexing: indexingTdb
+                                                         inMemCtx: mem_ctx];
+      rc = MAPISTORE_SUCCESS;
     }
   else
     rc = MAPISTORE_ERROR;
@@ -163,7 +248,7 @@ sogo_backend_create_context(TALLOC_CTX *mem_ctx,
 
    \return MAPISTORE_SUCCESS on success, otherwise MAPISTORE error
 */
-static int
+static enum mapistore_error
 sogo_context_get_path(void *backend_object, TALLOC_CTX *mem_ctx,
                       uint64_t fmid, char **path)
 {
@@ -190,7 +275,7 @@ sogo_context_get_path(void *backend_object, TALLOC_CTX *mem_ctx,
   return rc;
 }
 
-static int
+static enum mapistore_error
 sogo_context_get_root_folder(void *backend_object, TALLOC_CTX *mem_ctx,
                              uint64_t fid, void **folder_object)
 {
@@ -229,7 +314,7 @@ sogo_context_get_root_folder(void *backend_object, TALLOC_CTX *mem_ctx,
 
    \return MAPISTORE_SUCCESS on success, otherwise MAPISTORE_ERROR
 */
-static int
+static enum mapistore_error
 sogo_folder_open_folder(void *folder_object, TALLOC_CTX *mem_ctx, uint64_t fid, void **childfolder_object)
 {
   struct MAPIStoreTallocWrapper *wrapper;
@@ -265,7 +350,7 @@ sogo_folder_open_folder(void *folder_object, TALLOC_CTX *mem_ctx, uint64_t fid, 
 
    \return MAPISTORE_SUCCESS on success, otherwise MAPISTORE_ERROR
 */
-static int
+static enum mapistore_error
 sogo_folder_create_folder(void *folder_object, TALLOC_CTX *mem_ctx,
                           uint64_t fid, struct SRow *aRow,
                           void **childfolder_object)
@@ -304,8 +389,8 @@ sogo_folder_create_folder(void *folder_object, TALLOC_CTX *mem_ctx,
 
    \return MAPISTORE_SUCCESS on success, otherwise MAPISTORE_ERROR
 */
-static int
-sogo_folder_delete_folder(void *folder_object, uint64_t fid)
+static enum mapistore_error
+sogo_folder_delete(void *folder_object)
 {
   struct MAPIStoreTallocWrapper *wrapper;
   NSAutoreleasePool *pool;
@@ -319,7 +404,7 @@ sogo_folder_delete_folder(void *folder_object, uint64_t fid)
       wrapper = folder_object;
       folder = wrapper->MAPIStoreSOGoObject;
       pool = [NSAutoreleasePool new];
-      rc = [folder deleteFolderWithFID: fid];
+      rc = [folder deleteFolder];
       [pool release];
     }
   else
@@ -330,8 +415,8 @@ sogo_folder_delete_folder(void *folder_object, uint64_t fid)
   return rc;
 }
 
-static int
-sogo_folder_get_child_count(void *folder_object, uint8_t table_type, uint32_t *child_count)
+static enum mapistore_error
+sogo_folder_get_child_count(void *folder_object, enum mapistore_table_type table_type, uint32_t *child_count)
 {
   struct MAPIStoreTallocWrapper *wrapper;
   NSAutoreleasePool *pool;
@@ -356,10 +441,10 @@ sogo_folder_get_child_count(void *folder_object, uint8_t table_type, uint32_t *c
   return rc;
 }
 
-static int
+static enum mapistore_error
 sogo_folder_open_message(void *folder_object,
                          TALLOC_CTX *mem_ctx,
-                         uint64_t mid,
+                         uint64_t mid, bool write_access,
                          void **message_object)
 {
   struct MAPIStoreTallocWrapper *wrapper;
@@ -375,7 +460,10 @@ sogo_folder_open_message(void *folder_object,
       wrapper = folder_object;
       folder = wrapper->MAPIStoreSOGoObject;
       pool = [NSAutoreleasePool new];
-      rc = [folder openMessage: &message withMID: mid inMemCtx: mem_ctx];
+      rc = [folder openMessage: &message
+                       withMID: mid
+                    forWriting: write_access
+                      inMemCtx: mem_ctx];
       if (rc == MAPISTORE_SUCCESS)
         *message_object = [message tallocWrapper: mem_ctx];
       [pool release];
@@ -388,7 +476,7 @@ sogo_folder_open_message(void *folder_object,
   return rc;
 }
 
-static int
+static enum mapistore_error
 sogo_folder_create_message(void *folder_object,
                            TALLOC_CTX *mem_ctx,
                            uint64_t mid,
@@ -423,7 +511,7 @@ sogo_folder_create_message(void *folder_object,
   return rc;
 }
 
-static int
+static enum mapistore_error
 sogo_folder_delete_message(void *folder_object, uint64_t mid, uint8_t flags)
 {
   struct MAPIStoreTallocWrapper *wrapper;
@@ -449,7 +537,7 @@ sogo_folder_delete_message(void *folder_object, uint64_t mid, uint8_t flags)
   return rc;
 }
 
-static int
+static enum mapistore_error
 sogo_folder_move_copy_messages(void *folder_object,
                                void *source_folder_object,
                                uint32_t mid_count,
@@ -489,9 +577,9 @@ sogo_folder_move_copy_messages(void *folder_object,
   return rc;
 }
 
-static int
+static enum mapistore_error
 sogo_folder_get_deleted_fmids(void *folder_object, TALLOC_CTX *mem_ctx,
-                              uint8_t table_type, uint64_t change_num,
+                              enum mapistore_table_type table_type, uint64_t change_num,
                               struct I8Array_r **fmidsp, uint64_t *cnp)
 {
   struct MAPIStoreTallocWrapper *wrapper;
@@ -521,9 +609,9 @@ sogo_folder_get_deleted_fmids(void *folder_object, TALLOC_CTX *mem_ctx,
   return rc;
 }
 
-static int
+static enum mapistore_error
 sogo_folder_open_table(void *folder_object, TALLOC_CTX *mem_ctx,
-                       uint8_t table_type, uint32_t handle_id,
+                       enum mapistore_table_type table_type, uint32_t handle_id,
                        void **table_object, uint32_t *row_count)
 {
   struct MAPIStoreTallocWrapper *wrapper;
@@ -555,7 +643,7 @@ sogo_folder_open_table(void *folder_object, TALLOC_CTX *mem_ctx,
   return rc;
 }
 
-static int
+static enum mapistore_error
 sogo_folder_modify_permissions(void *folder_object, uint8_t flags,
                                uint16_t pcount,
                                struct PermissionData *permissions)
@@ -585,7 +673,7 @@ sogo_folder_modify_permissions(void *folder_object, uint8_t flags,
   return rc;
 }
 
-static int
+static enum mapistore_error
 sogo_message_get_message_data(void *message_object,
                               TALLOC_CTX *mem_ctx,
                               struct mapistore_message **msg_dataP)
@@ -615,7 +703,7 @@ sogo_message_get_message_data(void *message_object,
   return rc;
 }
 
-static int
+static enum mapistore_error
 sogo_message_create_attachment (void *message_object, TALLOC_CTX *mem_ctx, void **attachment_object, uint32_t *aidp)
 {
   struct MAPIStoreTallocWrapper *wrapper;
@@ -645,7 +733,7 @@ sogo_message_create_attachment (void *message_object, TALLOC_CTX *mem_ctx, void 
   return rc;
 }
 
-static int
+static enum mapistore_error
 sogo_message_open_attachment (void *message_object, TALLOC_CTX *mem_ctx,
                               uint32_t aid, void **attachment_object)
 {
@@ -676,7 +764,7 @@ sogo_message_open_attachment (void *message_object, TALLOC_CTX *mem_ctx,
   return rc;
 }
 
-static int
+static enum mapistore_error
 sogo_message_get_attachment_table (void *message_object, TALLOC_CTX *mem_ctx, void **table_object, uint32_t *row_count)
 {
   struct MAPIStoreTallocWrapper *wrapper;
@@ -707,7 +795,7 @@ sogo_message_get_attachment_table (void *message_object, TALLOC_CTX *mem_ctx, vo
   return rc;
 }
 
-static int
+static enum mapistore_error
 sogo_message_modify_recipients (void *message_object,
                                 struct SPropTagArray *columns,
                                 uint16_t count,
@@ -739,7 +827,7 @@ sogo_message_modify_recipients (void *message_object,
   return rc;
 }
 
-static int
+static enum mapistore_error
 sogo_message_set_read_flag (void *message_object, uint8_t flag)
 {
   struct MAPIStoreTallocWrapper *wrapper;
@@ -766,7 +854,7 @@ sogo_message_set_read_flag (void *message_object, uint8_t flag)
   return rc;
 }
 
-static int
+static enum mapistore_error
 sogo_message_save (void *message_object)
 {
   struct MAPIStoreTallocWrapper *wrapper;
@@ -793,7 +881,7 @@ sogo_message_save (void *message_object)
   return rc;
 }
 
-static int
+static enum mapistore_error
 sogo_message_submit (void *message_object, enum SubmitFlags flags)
 {
   struct MAPIStoreTallocWrapper *wrapper;
@@ -820,7 +908,7 @@ sogo_message_submit (void *message_object, enum SubmitFlags flags)
   return rc;
 }
 
-static int
+static enum mapistore_error
 sogo_message_attachment_open_embedded_message
 (void *attachment_object,
  TALLOC_CTX *mem_ctx, void **message_object,
@@ -858,7 +946,7 @@ sogo_message_attachment_open_embedded_message
   return rc;
 }
 
-static int sogo_table_get_available_properties(void *table_object,
+static enum mapistore_error sogo_table_get_available_properties(void *table_object,
                                                TALLOC_CTX *mem_ctx, struct SPropTagArray **propertiesP)
 {
   struct MAPIStoreTallocWrapper *wrapper;
@@ -884,7 +972,7 @@ static int sogo_table_get_available_properties(void *table_object,
   return rc;
 }
 
-static int
+static enum mapistore_error
 sogo_table_set_columns (void *table_object, uint16_t count, enum MAPITAGS *properties)
 {
   struct MAPIStoreTallocWrapper *wrapper;
@@ -911,7 +999,7 @@ sogo_table_set_columns (void *table_object, uint16_t count, enum MAPITAGS *prope
   return rc;
 }
 
-static int
+static enum mapistore_error
 sogo_table_set_restrictions (void *table_object, struct mapi_SRestriction *restrictions, uint8_t *table_status)
 {
   struct MAPIStoreTallocWrapper *wrapper;
@@ -940,7 +1028,7 @@ sogo_table_set_restrictions (void *table_object, struct mapi_SRestriction *restr
   return rc;
 }
 
-static int
+static enum mapistore_error
 sogo_table_set_sort_order (void *table_object, struct SSortOrderSet *sort_order, uint8_t *table_status)
 {
   struct MAPIStoreTallocWrapper *wrapper;
@@ -969,9 +1057,9 @@ sogo_table_set_sort_order (void *table_object, struct SSortOrderSet *sort_order,
   return rc;
 }
 
-static int
+static enum mapistore_error
 sogo_table_get_row (void *table_object, TALLOC_CTX *mem_ctx,
-                    enum table_query_type query_type, uint32_t row_id,
+                    enum mapistore_query_type query_type, uint32_t row_id,
                     struct mapistore_property_data **data)
 {
   struct MAPIStoreTallocWrapper *wrapper;
@@ -998,9 +1086,9 @@ sogo_table_get_row (void *table_object, TALLOC_CTX *mem_ctx,
   return rc;
 }
 
-static int
+static enum mapistore_error
 sogo_table_get_row_count (void *table_object,
-                          enum table_query_type query_type,
+                          enum mapistore_query_type query_type,
                           uint32_t *row_countp)
 {
   struct MAPIStoreTallocWrapper *wrapper;
@@ -1027,7 +1115,7 @@ sogo_table_get_row_count (void *table_object,
   return rc;
 }
 
-static int
+static enum mapistore_error
 sogo_table_handle_destructor (void *table_object, uint32_t handle_id)
 {
   struct MAPIStoreTallocWrapper *wrapper;
@@ -1054,7 +1142,7 @@ sogo_table_handle_destructor (void *table_object, uint32_t handle_id)
   return rc;
 }
 
-static int sogo_properties_get_available_properties(void *object,
+static enum mapistore_error sogo_properties_get_available_properties(void *object,
                                                     TALLOC_CTX *mem_ctx,
                                                     struct SPropTagArray **propertiesP)
 {
@@ -1081,7 +1169,7 @@ static int sogo_properties_get_available_properties(void *object,
   return rc;
 }
 
-static int
+static enum mapistore_error
 sogo_properties_get_properties (void *object,
                                 TALLOC_CTX *mem_ctx,
                                 uint16_t count, enum MAPITAGS *properties,
@@ -1112,7 +1200,7 @@ sogo_properties_get_properties (void *object,
   return rc;
 }
 
-static int
+static enum mapistore_error
 sogo_properties_set_properties (void *object, struct SRow *aRow)
 {
   struct MAPIStoreTallocWrapper *wrapper;
@@ -1138,7 +1226,7 @@ sogo_properties_set_properties (void *object, struct SRow *aRow)
   return rc;
 }
 
-static int
+static enum mapistore_error
 sogo_manager_generate_uri (TALLOC_CTX *mem_ctx, 
                            const char *user, 
                            const char *folder, 
@@ -1208,11 +1296,13 @@ int mapistore_init_backend(void)
       backend.backend.namespace = "sogo://";
       backend.backend.init = sogo_backend_init;
       backend.backend.create_context = sogo_backend_create_context;
+      backend.backend.create_root_folder = sogo_backend_create_root_folder;
+      backend.backend.list_contexts = sogo_backend_list_contexts;
       backend.context.get_path = sogo_context_get_path;
       backend.context.get_root_folder = sogo_context_get_root_folder;
       backend.folder.open_folder = sogo_folder_open_folder;
       backend.folder.create_folder = sogo_folder_create_folder;
-      backend.folder.delete_folder = sogo_folder_delete_folder;
+      backend.folder.delete = sogo_folder_delete;
       backend.folder.open_message = sogo_folder_open_message;
       backend.folder.create_message = sogo_folder_create_message;
       backend.folder.delete_message = sogo_folder_delete_message;

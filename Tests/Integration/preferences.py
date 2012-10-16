@@ -6,10 +6,15 @@ import simplejson
 
 import sogoLogin
 
-SOGoSupportedLanguages = [ "Catalan", "Czech", "Welsh", "English", "SpanishSpain", "SpanishArgentina",
-                           "French", "German", "Icelandic", "Italian", "Hungarian", "DanishDenmark",
-                           "Dutch", "BrazilianPortuguese", "NorwegianBokmal",
-                           "NorwegianNynorsk", "Polish", "Russian", "Ukrainian", "Swedish" ]
+
+
+# must be kept in sync with SoObjects/SOGo/SOGoDefaults.plist
+# this should probably be fetched magically...
+SOGoSupportedLanguages = [ "Catalan", "Czech", "Dutch", "Danish", "Welsh", "English",
+                           "SpanishSpain", "SpanishArgentina", "French", "German",
+                           "Icelandic", "Italian", "Hungarian", "BrazilianPortuguese",
+                           "NorwegianBokmal", "NorwegianNynorsk", "Polish", "Russian",
+                           "Ukrainian", "Swedish" ];
 daysBetweenResponseList=[1,2,3,5,7,14,21,30]
 
 class HTTPPreferencesPOST (webdavlib.HTTPPOST):
@@ -44,31 +49,34 @@ class preferences:
     authCookie = sogoLogin.getAuthCookie(hostname, port, username, password)
     self.cookie = authCookie
 
+    # map between preferences/jsonDefaults and the webUI names
+    # should probably be unified...
     self.preferencesMap = {
-                           "SOGoLanguage": "2.1.0.3.0.1.4.3.1.3.1.1.2",
-                           "SOGoSieveFilters": "sieveFilters",
+        "SOGoLanguage": "language",
+        "SOGoTimeZone": "timezone",
+        "SOGoSieveFilters": "sieveFilters",
 
 			   # Vacation stuff
 			   "Vacation": "enableVacation", # to disable, don't specify it
 			   "autoReplyText": "autoReplyText", # string
 			   "autoReplyEmailAddresses":  "autoReplyEmailAddresses", # LIST
-			   "daysBetweenResponse":  "2.1.0.3.0.1.4.3.1.3.7.1.5.1.1.3.7.2", # see daysBetweenResponseList
+			   "daysBetweenResponse":  "daysBetweenResponsesList", 
 			   "ignoreLists":  "ignoreLists", #bool
 
 			   # forward stuff
-                           "Forward": "enableForward", # to disable, don't specify it
-                           "forwardAddress": "forwardAddress",
-                           "keepCopy": "forwardKeepCopy",
-                          }
+         "Forward": "enableForward", # to disable, don't specify it
+         "forwardAddress": "forwardAddress",
+         "keepCopy": "forwardKeepCopy",
+    }
 
   def set(self, preference, value=None):
     # if preference is a dict, set all prefs found in the dict
     content=""
-    try:
+    if isinstance(preference, dict):
       for k,v in preference.items():
         content+="%s=%s&" % (self.preferencesMap[k], v)
-    except AttributeError:
-      # preference wasn't a dict
+    else:
+      # assume it is a str
       formKey = self.preferencesMap[preference]
       content = "%s=%s&hasChanged=1" % (formKey, value)
 
@@ -81,9 +89,9 @@ class preferences:
 
     self.client.execute (post)
 
-    # Raise an exception if the language wasn't properly set
+    # Raise an exception if the pref wasn't properly set
     if post.response["status"] != 200:
-      raise Exception ("failure setting language, (code = %d)" \
+      raise Exception ("failure setting prefs, (code = %d)" \
                        % post.response["status"])
 
   def get(self, preference):
@@ -102,5 +110,6 @@ class preferences:
 # Simple main to test this class
 if __name__ == "__main__":
   p = preferences ()
+  print p.get ("SOGoLanguage")
   p.set ("SOGoLanguage", SOGoSupportedLanguages.index("French"))
   print p.get ("SOGoLanguage")

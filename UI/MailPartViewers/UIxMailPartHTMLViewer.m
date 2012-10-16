@@ -1,9 +1,10 @@
 /* UIxMailPartHTMLViewer.m - this file is part of SOGo
  *
- * Copyright (C) 2007-2011 Inverse inc.
+ * Copyright (C) 2007-2012 Inverse inc.
  *
  * Author: Wolfgang Sourdeau <wsourdeau@inverse.ca>
  *         Ludovic Marcotte <lmarcotte@inverse.ca>
+ *         Francis Lachapelle <flachapelle@inverse.ca>
  *
  * This file is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -52,6 +53,9 @@
 
 /* Tags that are forbidden within the body of the html content */
 static NSArray *BannedTags = nil;
+
+/* Tags that can't have any contents (no end tag) */
+static NSArray *VoidTags = nil;
 
 static xmlCharEncoding
 _xmlCharsetForCharset (NSString *charset)
@@ -230,6 +234,14 @@ static NSData* _sanitizeContent(NSData *theData)
     BannedTags = [[NSArray alloc] initWithObjects: @"script", @"frameset",
                                   @"frame", @"iframe", @"applet", @"link",
                                   @"base", @"meta", @"title", nil];
+  if (!VoidTags)
+    {
+      /* see http://www.w3.org/TR/html4/index/elements.html */
+      VoidTags = [[NSArray alloc] initWithObjects: @"area", @"base",
+                                  @"basefont", @"br", @"col", @"frame", @"hr",
+                                  @"img", @"input", @"isindex", @"link",
+                                @"meta", @"param", @"", nil];
+    }
 }
 
 - (id) init
@@ -411,6 +423,12 @@ static NSData* _sanitizeContent(NSData *theData)
           resultPart = [NSMutableString string];
           [resultPart appendFormat: @"<%@", _rawName];
 
+          if ([VoidTags containsObject: lowerName])
+            {
+              if (!ignoredContent)
+                ignoreTag = [lowerName copy];
+              ignoredContent++;
+            }
           max = [_attributes count];
           for (count = 0; count < max; count++)
             {
@@ -431,7 +449,7 @@ static NSData* _sanitizeContent(NSData *theData)
                   else if ([lowerName isEqualToString: @"img"])
                     {
                       /* [resultPart appendString:
-                        @"src=\"/SOGo.woa/WebServerResources/empty.gif\""]; */
+                         @"src=\"/SOGo.woa/WebServerResources/empty.gif\""]; */
                       name = @"unsafe-src";
                     }
                   else
@@ -460,6 +478,8 @@ static NSData* _sanitizeContent(NSData *theData)
                                                       withString: @"\\\""]];
             }
 
+          if ([VoidTags containsObject: lowerName])
+            [resultPart appendString: @"/"];
           [resultPart appendString: @">"];
           [result appendString: resultPart];
         }

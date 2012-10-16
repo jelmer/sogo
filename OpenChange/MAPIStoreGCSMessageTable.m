@@ -58,7 +58,7 @@
   NSCalendarDate *dateValue;
   int32_t longDate;
 
-  translatedRes = talloc (NULL, struct mapi_SPropertyRestriction);
+  translatedRes = talloc (memCtx, struct mapi_SPropertyRestriction);
   translatedRes->ulPropTag = (res->ulPropTag & 0xffff0000) | PT_LONG;
   translatedRes->relop = res->relop;
   dateValue = NSObjectFromMAPISPropValue (&res->lpProp);
@@ -86,7 +86,7 @@
   MAPIRestrictionState rc;
   TALLOC_CTX *memCtx = NULL;
 
-  if (res->ulPropTag == PR_CHANGE_NUM)
+  if (res->ulPropTag == PidTagChangeNumber)
     {
       value = NSObjectFromMAPISPropValue (&res->lpProp);
       lastModified = [(MAPIStoreGCSFolder *)
@@ -150,13 +150,6 @@
     }
 
   return rc;
-}
-
-- (EOQualifier *) componentQualifier
-{
-  [self subclassResponsibility: _cmd];
-
-  return nil;
 }
 
 /* sorting */

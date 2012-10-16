@@ -364,7 +364,10 @@ static NSArray *tasksFields = nil;
 		{
 		  // Identifies whether the active user is the organizer
 		  // of this event.
-		  if ([ownerUser hasEmail: [newInfo objectForKey: @"c_orgmail"]])
+		  NSString *c_orgmail;
+		  c_orgmail = [newInfo objectForKey: @"c_orgmail"];
+
+		  if ([c_orgmail isKindOfClass: [NSString class]] && [ownerUser hasEmail: c_orgmail])
                     [newInfo setObject: [NSNumber numberWithInt: 1]
                                 forKey: @"ownerIsOrganizer"];
                   else
@@ -745,7 +748,7 @@ _userStateInEvent (NSArray *event)
 		  [currentDay addObject: eventBlock];
 		}
 	      else
-		[self warnWithFormat: @"event '%@' has end < start: %d < %d",
+		[self warnWithFormat: @"event '%@' has end <= start: %d < %d",
 		      [event objectAtIndex: eventNameIndex], eventEnd, currentStart];
 	    }
         }

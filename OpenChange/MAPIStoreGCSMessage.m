@@ -21,13 +21,17 @@
  */
 
 #import <Foundation/NSCalendarDate.h>
+#import <Foundation/NSDictionary.h>
 #import <Foundation/NSValue.h>
+#import <NGObjWeb/SoSecurityManager.h>
 #import <NGExtensions/NSObject+Logs.h>
 #import <SOGo/SOGoContentObject.h>
+#import <SOGo/SOGoPermissions.h>
 
 #import "MAPIStoreContext.h"
 #import "MAPIStoreGCSFolder.h"
 #import "MAPIStoreTypes.h"
+#import "MAPIStoreUserContext.h"
 #import "NSData+MAPIStore.h"
 
 #import "MAPIStoreGCSMessage.h"
@@ -48,8 +52,74 @@
   return [sogoObject lastModified];
 }
 
-- (int) getPrChangeKey: (void **) data
-              inMemCtx: (TALLOC_CTX *) memCtx
+- (int) getPidTagAccess: (void **) data // TODO
+               inMemCtx: (TALLOC_CTX *) memCtx
+{
+  MAPIStoreContext *context;
+  WOContext *woContext;
+  SoSecurityManager *sm;
+  MAPIStoreUserContext *userContext;
+  uint32_t access;
+
+  context = [self context];
+  userContext = [self userContext];
+  if ([[context activeUser] isEqual: [userContext sogoUser]])
+    access = 0x03;
+  else
+    {
+      sm = [SoSecurityManager sharedSecurityManager];
+      woContext = [userContext woContext];
+
+      access = 0;
+      if (![sm validatePermission: SoPerm_ChangeImagesAndFiles
+                         onObject: sogoObject
+                        inContext: woContext])
+        access |= 1;
+      if (![sm validatePermission: SoPerm_AccessContentsInformation
+                         onObject: sogoObject
+                        inContext: woContext])
+        access |= 2;
+      if (![sm validatePermission: SOGoPerm_DeleteObject
+                         onObject: sogoObject
+                        inContext: woContext])
+        access |= 4;
+    }
+  *data = MAPILongValue (memCtx, access);
+
+  return MAPISTORE_SUCCESS;
+}
+
+- (int) getPidTagAccessLevel: (void **) data // TODO
+                    inMemCtx: (TALLOC_CTX *) memCtx
+{
+  MAPIStoreContext *context;
+  MAPIStoreUserContext *userContext;
+  WOContext *woContext;
+  SoSecurityManager *sm;
+  uint32_t accessLvl;
+
+  context = [self context];
+  userContext = [self userContext];
+  if ([[context activeUser] isEqual: [userContext sogoUser]])
+    accessLvl = 1;
+  else
+    {
+      sm = [SoSecurityManager sharedSecurityManager];
+      woContext = [userContext woContext];
+      if (![sm validatePermission: SoPerm_ChangeImagesAndFiles
+                         onObject: sogoObject
+                        inContext: woContext])
+        accessLvl = 1;
+      else
+        accessLvl = 0;
+    }
+  *data = MAPILongValue (memCtx, accessLvl);
+
+  return MAPISTORE_SUCCESS;
+}
+
+- (int) getPidTagChangeKey: (void **) data
+                  inMemCtx: (TALLOC_CTX *) memCtx
 {
   int rc = MAPISTORE_SUCCESS;
   NSData *changeKey;
@@ -76,18 +146,26 @@
   return rc;
 }
 
-- (int) getPrPredecessorChangeList: (void **) data
-                          inMemCtx: (TALLOC_CTX *) memCtx
+- (int) getPidTagPredecessorChangeList: (void **) data
+                              inMemCtx: (TALLOC_CTX *) memCtx
 {
   int rc = MAPISTORE_SUCCESS;
   NSData *changeList;
+  MAPIStoreGCSFolder *parentFolder;
 
   if (isNew)
     rc = MAPISTORE_ERR_NOT_FOUND;
   else
     {
-      changeList = [(MAPIStoreGCSFolder *)[self container]
-                                          predecessorChangeListForMessageWithKey: [self nameInContainer]];
+      parentFolder = (MAPIStoreGCSFolder *)[self container];
+      changeList = [parentFolder
+                     predecessorChangeListForMessageWithKey: [self nameInContainer]];
+      if (!changeList)
+        {
+          [parentFolder synchroniseCache];
+          changeList = [parentFolder
+                         predecessorChangeListForMessageWithKey: [self nameInContainer]];
+        }
       if (!changeList)
         abort ();
       *data = [changeList asBinaryInMemCtx: memCtx];
@@ -125,6 +203,17 @@
     }
 
   return version;
+}
+
+- (void) updateVersions
+{
+  NSData *newChangeKey;
+
+  newChangeKey = [properties objectForKey: MAPIPropertyKey (PR_CHANGE_KEY)];
+
+  [(MAPIStoreGCSFolder *) container
+    updateVersionsForMessageWithKey: [self nameInContainer]
+                      withChangeKey: newChangeKey];
 }
 
 @end
