@@ -504,6 +504,8 @@ NSString *SOGoWeekStartFirstFullWeek = @"FirstFullWeek";
 
 - (void) setMailSignature: (NSString *) newValue
 {
+  if ([newValue length] == 0)
+    newValue = nil;
   [self setObject: newValue forKey: @"SOGoMailSignature"];
 }
 
@@ -529,6 +531,42 @@ NSString *SOGoWeekStartFirstFullWeek = @"FirstFullWeek";
     signaturePlacement = [self stringForKey: @"SOGoMailSignaturePlacement"];
 
   return signaturePlacement;
+}
+
+- (void) setMailCustomFullName: (NSString *) newValue
+{
+  if ([newValue length] == 0)
+    newValue = nil;
+  [self setObject: newValue forKey: @"SOGoMailCustomFullName"];
+}
+
+- (NSString *) mailCustomFullName
+{
+  return [self stringForKey: @"SOGoMailCustomFullName"];
+}
+
+- (void) setMailCustomEmail: (NSString *) newValue
+{
+  if ([newValue length] == 0)
+    newValue = nil;
+  [self setObject: newValue forKey: @"SOGoMailCustomEmail"];
+}
+
+- (NSString *) mailCustomEmail
+{
+  return [self stringForKey: @"SOGoMailCustomEmail"];
+}
+
+- (void) setMailReplyTo: (NSString *) newValue
+{
+  if ([newValue length] == 0)
+    newValue = nil;
+  [self setObject: newValue forKey: @"SOGoMailReplyTo"];
+}
+
+- (NSString *) mailReplyTo
+{
+  return [self stringForKey: @"SOGoMailReplyTo"];
 }
 
 - (void) setAllowUserReceipt: (BOOL) allow

@@ -459,13 +459,27 @@
 	      NSMutableArray *fbInfo;
 	      int i;
 
+	      // We get the start/end date for our conflict range. If the event to be added is recurring, we
+	      // check for at least a year to start with.
 	      start = [[theEvent startDate] dateByAddingYears: 0  months: 0  days: 0  hours: 0  minutes: 0  seconds: 1];
-	      end = [[theEvent endDate] dateByAddingYears: 0  months: 0  days: 0  hours: 0  minutes: 0  seconds: -1];
+	      end = [[theEvent endDate] dateByAddingYears: ([theEvent isRecurrent] ? 1 : 0)  months: 0  days: 0  hours: 0  minutes: 0  seconds: -1];
 
 	      folder = [[SOGoUser userWithLogin: currentUID]
 			 personalCalendarFolderInContext: context];
 
-	      
+	      // Deny access to the resource if the ACLs don't allow the user
+	      if (![folder aclSQLListingFilter])
+	        {
+		  NSDictionary *values;
+		  NSString *reason;
+
+		  values = [NSDictionary dictionaryWithObjectsAndKeys:
+		  		[user cn], @"Cn",
+				[user systemEmail], @"SystemEmail"];
+		  reason = [values keysWithFormat: [self labelForKey: @"Cannot access resource: \"%{Cn} %{SystemEmail}\""]];
+	      	  return [NSException exceptionWithHTTPStatus:403 reason: reason];
+	      	}
+
 	      fbInfo = [NSMutableArray arrayWithArray: [folder fetchFreeBusyInfosFrom: start
 							       to: end]];
 
@@ -488,16 +502,23 @@
 		    [currentAttendee setParticipationStatus: iCalPersonPartStatAccepted];
 		  else
 		    {
+		      iCalCalendar *calendar;
 		      NSDictionary *values;
 		      NSString *reason;
+		      iCalEvent *event;
+		      
+		      calendar =  [iCalCalendar parseSingleFromSource: [[fbInfo objectAtIndex: 0] objectForKey: @"c_content"]];
+		      event = [[calendar events] lastObject];
 		      
 		      values = [NSDictionary dictionaryWithObjectsAndKeys: 
 					       [NSString stringWithFormat: @"%d", [user numberOfSimultaneousBookings]], @"NumberOfSimultaneousBookings",
 					     [user cn], @"Cn",
 					     [user systemEmail], @"SystemEmail",
+				             ([event summary] ? [event summary] : @""), @"EventTitle",
+					     [[fbInfo objectAtIndex: 0] objectForKey: @"startDate"], @"StartDate",
 					     nil];
 
-		      reason = [values keysWithFormat: [self labelForKey: @"Maximum number of simultaneous bookings (%{NumberOfSimultaneousBookings}) reached for resource \"%{Cn} %{SystemEmail}\"."]];
+		      reason = [values keysWithFormat: [self labelForKey: @"Maximum number of simultaneous bookings (%{NumberOfSimultaneousBookings}) reached for resource \"%{Cn} %{SystemEmail}\". The conflicting event is \"%{EventTitle}\", and starts on %{StartDate}."]];
 
 		      return [NSException exceptionWithHTTPStatus:403
 					  reason: reason];
@@ -545,6 +566,39 @@
   return nil;
 }
 
+
+//
+//
+//
+- (void) _addOrDeleteAttendees: (NSArray *) theAttendees
+inRecurrenceExceptionsForEvent: (iCalEvent *) theEvent
+                           add: (BOOL) shouldAdd
+{
+  
+  NSArray *events;
+  iCalEvent *e;
+  int i,j;
+
+  // We don't add/delete attendees to all recurrence exceptions if
+  // the modification was actually NOT made on the master event
+  if ([theEvent recurrenceId])
+    return;
+
+  events = [[theEvent parent] events];
+  
+  for (i = 0; i < [events count]; i++)
+    {
+      e = [events objectAtIndex: i];
+      if ([e recurrenceId])
+	for (j = 0; j < [theAttendees count]; j++)
+	  if (shouldAdd)
+	    [e addToAttendees: [theAttendees objectAtIndex: j]];
+	  else
+	    [e removeFromAttendees: [theAttendees objectAtIndex: j]];
+      
+    }
+}
+		       
 //
 //
 //
@@ -567,6 +621,13 @@
     }
 
   attendees = [changes deletedAttendees];
+
+  // We delete the attendees in all exception occurences, if
+  // the attendees were removed from the master event.
+  [self _addOrDeleteAttendees: attendees
+	inRecurrenceExceptionsForEvent: newEvent
+			  add: NO];
+
   if ([attendees count])
     {
       [self _handleRemovedUsers: attendees
@@ -585,6 +646,13 @@
     return ex;
 
   attendees = [changes insertedAttendees];
+
+  // We insert the attendees in all exception occurences, if
+  // the attendees were added to the master event.
+  [self _addOrDeleteAttendees: attendees
+	inRecurrenceExceptionsForEvent: newEvent
+			  add: YES];
+
   if ([changes sequenceShouldBeIncreased])
     {
       [newEvent increaseSequence];
@@ -648,7 +716,7 @@
 //       +------------> _handleUpdatedEvent:fromOldEvent: ---> _addOrUpdateEvent:forUID:owner:  <-----------+
 //                               |           |                   ^                                          |
 //                               v           v                   |                                          |
-//  _handleRemoveUsers:withRecurrenceId:  _handleSequenceUpdateInEvent:ignoringAttendees:fromOldEvent:      |
+//  _handleRemovedUsers:withRecurrenceId:  _handleSequenceUpdateInEvent:ignoringAttendees:fromOldEvent:      |
 //                     |                                                                                    |
 //                     |             [DELETEAction:]                                                        |
 //                     |                    |              {_handleAdded/Updated...}<--+                    |
@@ -1602,9 +1670,12 @@
 - (id) PUTAction: (WOContext *) _ctx
 {
   NSException *ex;
+  NSString *etag;
   NSArray *roles;
   WORequest *rq;
   id response;
+
+  unsigned int baseVersion;
 
   rq = [_ctx request];
   roles = [[context activeUser] rolesForObject: self  inContext: context];
@@ -1668,7 +1739,7 @@
 	      else
 		{
 		  // We might have auto-accepted resources here. If that's the
-		  // case, let's regerate the versitstring and replace the
+		  // case, let's regenerate the versitstring and replace the
 		  // one from the request.
 		  [rq setContent: [[[event parent] versitString] dataUsingEncoding: [rq contentEncoding]]];
 		}
@@ -1806,24 +1877,31 @@
 	{
 	  NSString *uid;
 	  
-	  if (master)
-	    uid = [[newEvent organizer] uid];
-	  else
+	  // We fetch the organizer's uid. Sometimes, the recurrence-id will
+	  // have it, sometimes not. If it doesn't, we fetch it from the master event.
+	  uid = [[newEvent organizer] uid];
+	  
+	  if (!uid && !master)
 	    uid = [[[[[newEvent parent] events] objectAtIndex: 0] organizer] uid];
 	  	  
+	  // With Thunderbird 10, if you create a recurring event with an exception
+	  // occurence, and invite someone, the PUT will have the organizer in the
+	  // recurrence-id and not in the master event. We must fix this, otherwise
+	  // SOGo will break.
+	  if (!master && ![[[[[newEvent parent] events] objectAtIndex: 0] organizer] uid])
+	    [[[[newEvent parent] events] objectAtIndex: 0]
+	      setOrganizer: [newEvent organizer]];
+
 	  if (uid && [uid caseInsensitiveCompare: owner] == NSOrderedSame)
 	    {
 	      if ((ex = [self _handleUpdatedEvent: newEvent  fromOldEvent: oldEvent]))
 		return ex;
-	      
-	      // A RECURRENCE-ID was removed so there has to be a change in the master event
-	      // We could also have an EXDATE added in the master component of the attendees
-	      // so we always compare the MASTER event.
-	      if (!master)
+	      else
 		{
-		  newEvent = [newEvents objectAtIndex: 0];
-		  oldEvent = [oldEvents objectAtIndex: 0];
-		  [self _handleUpdatedEvent: newEvent  fromOldEvent: oldEvent];
+		  // We might have auto-accepted resources here. If that's the
+		  // case, let's regenerate the versitstring and replace the
+		  // one from the request.
+		  [rq setContent: [[[newEvent parent] versitString] dataUsingEncoding: [rq contentEncoding]]];
 		}
 	    }
 	  //
@@ -1867,17 +1945,47 @@
 			withDelegate: nil // FIXME (specify delegate?)
 			forRecurrenceId: [self _addedExDate: oldEvent  newEvent: newEvent]];
 	      }
-	      else
-		[self changeParticipationStatus: [attendee partStat]
-				   withDelegate: delegate
-				forRecurrenceId: recurrenceId];
+	      else if (attendee)
+		{
+		  [self changeParticipationStatus: [attendee partStat]
+				     withDelegate: delegate
+				  forRecurrenceId: recurrenceId];
+		}
+	      // All attendees and the organizer field were removed. Apple iCal does
+	      // that when we remove the last attendee of an event.
+	      //
+	      // We must update previous's attendees' calendars to actually
+	      // remove the event in each of them.
+	      else 
+		{
+		  [self _handleRemovedUsers: [changes deletedAttendees]
+			   withRecurrenceId: recurrenceId];
+		}
 	    }
 	}
     }
 
-  // This will save the event into the database and also handle
-  // E-Tags properly, as well as content versioning.
-  response = [super PUTAction: _ctx];
+  // We must NOT invoke [super PUTAction:] here as it'll resave
+  // the content string and we could have etag mismatches.
+  response = [_ctx response];
+
+  baseVersion = (isNew ? 0 : version);
+
+  ex = [self saveContentString: [rq contentAsString]
+		   baseVersion: baseVersion];
+  if (ex)
+    response = (WOResponse *) ex;
+  else
+    {
+      if (isNew)
+	[response setStatus: 201 /* Created */];
+      else
+	[response setStatus: 204 /* No Content */];
+      
+      etag = [self davEntityTag];
+      if (etag)
+	[response setHeader: etag forKey: @"etag"];
+    }
 
   return response;
 }

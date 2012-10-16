@@ -148,8 +148,6 @@ function contactsListCallback(http) {
                             cell.appendChild(document.createTextNode(contact["c_telephonenumber"]));
                     }
                 }
-
-                configureDraggables();
             }
 
             // Remove unnecessary rows
@@ -218,6 +216,8 @@ function contactsListCallback(http) {
                     tBody.removeChild(tBody.rows[i]);
             }
         }
+
+        configureDraggables();
     }
     else
         log ("ajax problem 1: status = " + http.status);
@@ -1239,7 +1239,7 @@ function configureSelectionButtons() {
 
 function onDocumentKeydown(event) {
     var target = Event.element(event);
-    if (target.tagName != "INPUT") {
+    if (target.tagName != "INPUT" && target.tagName != "TEXTAREA") {
         var keyCode = event.keyCode;
         if (!keyCode) {
             keyCode = event.charCode;
@@ -1477,40 +1477,29 @@ function unsetCategoryOnNode(contactNode, category) {
 
 function configureDraggables() {
     if ($("contactFolders")) {
-        var mainElement = $("dragDropVisual");
-        Draggables.empty();
-    
-        if (mainElement == null) {
-            mainElement = new Element("div", {id: "dragDropVisual"});
-            document.body.appendChild(mainElement);
-            mainElement.absolutize();
-        }
-        mainElement.hide();
-    
-        new Draggable("dragDropVisual", 
-                      { handle: "contactsList", 
-                        onStart: startDragging,
-                        onEnd: stopDragging,
-                        onDrag: whileDragging,
-                        scroll: window,
-                        delay: 250 });
+        var rows = jQuery("tr.vcard");
+        rows.draggable("destroy");
+        rows.draggable({
+                    helper: function (event) { return '<div id="dragDropVisual"></div>'; },
+                    start: startDragging,
+                    drag: whileDragging,
+                    stop: stopDragging,
+                    appendTo: 'body',
+                    cursorAt: { right: 25 },
+                    scroll: false,
+                    distance: 4,
+                    zIndex: 20
+                    });
     }
 }
 
 function configureDroppables() {
-    var drops = $$("ul#contactFolders li");
-  
-    Droppables.empty ();
-    drops.each (function (drop) {
-            if (!drop.hasClassName ("remote"))
-                Droppables.add (drop.id, 
-                                { hoverclass: "genericHoverClass",
-                                        onDrop: dropAction
-                                        });
-        });   
+    jQuery("li.local").droppable({
+            hoverClass: 'genericHoverClass',
+                drop: dropAction });
 }
 
-function currentFolderIsRemote () {
+function currentFolderIsRemote() {
     rc = false;
     var selectedFolders = $("contactFolders").getSelectedNodes();
     if (selectedFolders.length > 0) {
@@ -1520,58 +1509,52 @@ function currentFolderIsRemote () {
     return rc;
 }
 
-function startDragging (itm, e) {
-    if (!Event.isLeftClick(e))
-        return;
-    var target = Event.element(e);
-    if (target.up().up().tagName != "TBODY")
-        return;
-
-    $("contactsListContent").setStyle({ overflow: "visible" });
-    var handle = $("dragDropVisual");
+function startDragging(event, ui) {
+    var row = event.target;
+    var handle = ui.helper;
     var contacts = $('contactsList').getSelectedRowsId();
     var count = contacts.length;
-    var row = target.up('TR');
-    
+
     if (count == 0 || contacts.indexOf(row.id) < 0) {
-        onRowClick(e, target);
+        onRowClick(event, $(row.id));
         contacts = $("contactsList").getSelectedRowsId();
         count = contacts.length;
     }
+    handle.html(count);
 
-    handle.update (count);
-    if (e.shiftKey || currentFolderIsRemote()) {
-      handle.addClassName("copy");
+    if (event.shiftKey || currentFolderIsRemote()) {
+      handle.addClass("copy");
     }
     handle.show();
 }
 
-function whileDragging (itm, e) {
-    var handle = $("dragDropVisual");
-    if (e.shiftKey || currentFolderIsRemote ())
-        handle.addClassName ("copy");
-    else if (handle.hasClassName ("copy"))
-        handle.removeClassName ("copy");
+function whileDragging(event, ui) {
+    if (event) {
+        var handle = ui.helper;
+        if (event.shiftKey || currentFolderIsRemote())
+            handle.addClass("copy");
+        else if (handle.hasClass("copy"))
+            handle.removeClass("copy");
+    }
 }
 
-function stopDragging () {
-    $("contactsListContent").setStyle({ overflow: "auto", overflowX: "hidden" });
-    var handle = $("dragDropVisual");
+function stopDragging(event, ui) {
+    var handle = ui.helper;
     handle.hide();
-    if (handle.hasClassName ("copy"))
-        handle.removeClassName ("copy");
+    if (handle.hasClass("copy"))
+        handle.removeClass("copy");
 }
 
-function dropAction (dropped, zone, e) {
+function dropAction(event, ui) {
     var action = "move"; 
-    if ($("dragDropVisual").hasClassName ("copy"))
+    if (ui.helper.hasClass("copy"))
         action = "copy";
     else
         $('contactView').update();
-    dropSelectedContacts (action, zone.id.substr (1));
+    dropSelectedContacts(action, this.id.substr(1));
 }
 
-function dropSelectedContacts (action, toId) {
+function dropSelectedContacts(action, toId) {
     var selectedFolders = $("contactFolders").getSelectedNodes();
     if (selectedFolders.length > 0) {
         var contactIds = $('contactsList').getSelectedRowsId();

@@ -130,6 +130,15 @@ extern NSString *SOGoWeekStartFirstFullWeek;
 - (void) setMailSignaturePlacement: (NSString *) newValue;
 - (NSString *) mailSignaturePlacement;
 
+- (void) setMailCustomFullName: (NSString *) newValue;
+- (NSString *) mailCustomFullName;
+
+- (void) setMailCustomEmail: (NSString *) newValue;
+- (NSString *) mailCustomEmail;
+
+- (void) setMailReplyTo: (NSString *) newValue;
+- (NSString *) mailReplyTo;
+
 - (void) setAllowUserReceipt: (BOOL) allow;
 - (BOOL) allowUserReceipt;
 - (void) setUserReceiptNonRecipientAction: (NSString *) action;

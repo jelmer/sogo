@@ -47,6 +47,15 @@ var removeFolderRequestCount = 0;
 // Email validation regexp
 var emailRE = /^([\w\!\#$\%\&\'\*\+\-\/\=\?\^\`{\|\}\~]+\.)*[\w\!\#$\%\&\'\*\+\-\/\=\?\^\`{\|\}\~]+@((((([a-z0-9]{1}[a-z0-9\-]{0,62}[a-z0-9]{1})|[a-z])\.)+[a-z]{2,6})|(\d{1,3}\.){3}\d{1,3}(\:\d{1,5})?)$/i;
 
+function clickEventWrapper(functionRef) {
+    function button_clickEventWrapper(event) {
+        preventDefault(event);
+        return functionRef.apply(this, [event]);
+    }
+
+    return button_clickEventWrapper;
+}
+
 
 function createElement(tagName, id, classes,
                        attributes, htmlAttributes,
@@ -275,11 +284,9 @@ function openMailTo(senderMailTo) {
             sanitizedAddresses.push(sanitizedAddress);
     }
 
-    var mailto = sanitizedAddresses.join(",");
-
-    if (mailto.length > 0)
+    if (sanitizedAddresses.length > 0)
         openMailComposeWindow(ApplicationBaseURL
-                              + "../Mail/compose?mailto=" + encodeURIComponent(Object.toJSON([mailto]))
+                              + "../Mail/compose?mailto=" + encodeURIComponent(Object.toJSON(sanitizedAddresses))
                               + ((subject.length > 0)?"?subject=" + encodeURIComponent(subject):""));
 
     return false; /* stop following the link */
@@ -610,13 +617,12 @@ function onRowClick(event, target) {
     var node = target || getTarget(event);
     var rowIndex = null;
 
-    if (node.tagName != 'TD' && node.tagName != 'LI')
+    if (node.tagName != 'TD' && node.tagName != 'LI' && node.tagName != 'TR')
         node = this;
 
     if (node.tagName == 'TD') {
         node = node.parentNode; // select TR
     }
-
     if (node.tagName == 'TR') {
         var head = $(node).up('table').down('thead');
         rowIndex = node.rowIndex;
@@ -1205,7 +1211,7 @@ function subscribeToFolder(refreshCallback, refreshCallbackData) {
     var folderPath = folderData[1];
     if (username != UserLogin) {
         var url = (UserFolderURL + "../" + username
-                   + folderPath + "/subscribe");
+                   + "/" + folderPath + "/subscribe");
         if (document.subscriptionAjaxRequest) {
             document.subscriptionAjaxRequest.aborted = true;
             document.subscriptionAjaxRequest.abort();
@@ -1257,11 +1263,18 @@ function accessToSubscribedFolder(serverFolder) {
 
     var parts = serverFolder.split(":");
     if (parts.length > 1) {
+        var username = parts[0];
         var paths = parts[1].split("/");
-        folder = "/" + parts[0].asCSSIdentifier() + "_" + paths[2];
+        if (username == UserLogin) {
+            folder = paths[1];
+        }
+        else {
+            folder = "/" + username.asCSSIdentifier() + "_" + paths[1];
+        }
     }
-    else
+    else {
         folder = serverFolder;
+    }
 
     return folder;
 }
@@ -1607,7 +1620,7 @@ function onCloseButtonClick(event) {
         Event.stop(event);
 
     if (window.frameElement && window.frameElement.id) {
-        parent$("bgFrameDiv").fade({ duration: 0.2 });
+        jQuery(parent$("bgFrameDiv")).fadeOut('fast');
         var div = parent$("popupFrame");
         div.hide();
         div.down("iframe").src = "/SOGo/loading";
@@ -1665,13 +1678,10 @@ function onPreferencesClick(event) {
     }
     else {
         var w = window.open(urlstr, "SOGoPreferences",
-                            "width=580,height=450,resizable=1,scrollbars=0,location=0");
+                            "width=580,height=476,resizable=1,scrollbars=0,location=0");
         w.opener = window;
         w.focus();
     }
-
-    preventDefault(event);
-    return false;
 }
 
 function configureLinkBanner() {
@@ -1688,7 +1698,7 @@ function configureLinkBanner() {
         link = $("preferencesBannerLink");
         if (link) {
             link.observe("mousedown", listRowMouseDownHandler);
-            link.observe("click", onPreferencesClick);
+            link.observe("click", clickEventWrapper(onPreferencesClick));
         }
         link = $("consoleBannerLink");
         if (link) {
@@ -1927,8 +1937,9 @@ function createButton(id, caption, action) {
         var span = createElement("span", null, null, null, null, newButton);
         span.appendChild(document.createTextNode(caption));
     }
-    if (action)
-        newButton.on("click", action);
+    if (action) {
+        newButton.on("click", clickEventWrapper(action));
+    }
 
     return newButton;
 }
@@ -1959,7 +1970,7 @@ function _showAlertDialog(label) {
         document.body.appendChild(dialog);
         dialogs[label] = dialog;
     }
-    dialog.appear({ duration: 0.2 });
+    jQuery(dialog).fadeIn('fast');
 }
 
 function showConfirmDialog(title, label, callbackYes, callbackNo, yesLabel, noLabel) {
@@ -1997,7 +2008,7 @@ function _showConfirmDialog(title, label, callbackYes, callbackNo, yesLabel, noL
         document.body.appendChild(dialog);
         dialogs[key] = dialog;
     }
-    dialog.appear({ duration: 0.2 });
+    jQuery(dialog).fadeIn('fast');
 }
 
 function showPromptDialog(title, label, callback, defaultValue) {
@@ -2036,8 +2047,7 @@ function _showPromptDialog(title, label, callback, defaultValue) {
         document.body.appendChild(dialog);
         dialogs[title+label] = dialog;
     }
-    dialog.appear({ duration: 0.2,
-                    afterFinish: function () { dialog.down("input").focus(); } });
+    jQuery(dialog).fadeIn('fast', function () { dialog.down("input").focus(); });
 }
 
 function showSelectDialog(title, label, options, button, callbackFcn, callbackArg, defaultValue) {
@@ -2083,13 +2093,52 @@ function _showSelectDialog(title, label, options, button, callbackFcn, callbackA
     }
     if (defaultValue)
 	defaultOption = dialog.down('option[value="'+defaultValue+'"]').selected = true;
-    dialog.appear({ duration: 0.2 });
+    jQuery(dialog).fadeIn('fast');
+}
+
+function showAuthenticationDialog(label, callback) {
+    var div = $("bgDialogDiv");
+    if (div && div.visible() && div.getOpacity() > 0)
+        dialogsStack.push(_showAuthenticationDialog.bind(this, label, callback));
+    else
+        _showAuthenticationDialog(label, callback);
+}
+
+function _showAuthenticationDialog(label, callback) {
+    var dialog = dialogs[label];
+    if (dialog) {
+        $("bgDialogDiv").show();
+        var inputs = dialog.getElementsByTagName("input");
+        for (var i = 0; i < inputs.length; i++) {
+            inputs[i].value = "";
+        }
+    }
+    else {
+        var fields = createElement("p", null, ["prompt"]);
+	fields.appendChild(document.createTextNode(_("Username:")));
+        var un_input = createElement("input", null, "textField",
+				     { type: "text", "value": "" });
+	fields.appendChild(un_input);
+	fields.appendChild(document.createTextNode(_("Password:")));
+        var pw_input = createElement("input", null, "textField",
+			             { type: "password", "value": "" });
+	fields.appendChild(pw_input);
+        function callbackWrapper() {
+            callback(un_input.value, pw_input.value);
+        }
+        fields.appendChild(createButton(null, _("OK"), callbackWrapper));
+	fields.appendChild(createButton(null, _("Cancel"), disposeDialog));
+        dialog = createDialog(null, label, null, fields, "none");
+        document.body.appendChild(dialog);
+        dialogs[label] = dialog;
+    }
+    jQuery(dialog).fadeIn('fast', function () { dialog.down("input").focus(); });
 }
 
 function disposeDialog() {
     $$("DIV.dialog").each(function(div) {
         if (div.visible() && div.getOpacity() == 1)
-            div.fade({ duration: 0.2 });
+            jQuery(div).fadeOut('fast');
     });
     if (dialogsStack.length > 0) {
         // Show the next dialog box
@@ -2098,19 +2147,16 @@ function disposeDialog() {
         dialogFcn.delay(0.2);
     }
     else if ($('bgDialogDiv')) {
-        var bgFade = Effect.Fade('bgDialogDiv', { duration: 0.2 });
         // By the end the background fade out, a new dialog
         // may need to be displayed.
-        _disposeDialog.delay(0.1, bgFade);
+        jQuery('#bgDialogDiv').fadeOut('fast', _disposeDialog);
     }
 }
 
-function _disposeDialog(bgEffect) {
+function _disposeDialog() {
     if (dialogsStack.length) {
         var div = $("bgDialogDiv");
-        bgEffect.cancel();
-        div.show();
-        div.appear({ duration: 0.2, to: 0.3 });
+        jQuery(div).fadeIn(100);
         var dialogFcn = dialogsStack.first();
         dialogsStack.splice(0, 1);
         dialogFcn();

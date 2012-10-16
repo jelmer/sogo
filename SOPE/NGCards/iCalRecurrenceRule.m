@@ -183,6 +183,7 @@
 */
 
 #import <Foundation/NSArray.h>
+#import <Foundation/NSDictionary.h>
 #import <Foundation/NSEnumerator.h>
 #import <Foundation/NSException.h>
 #import <NGExtensions/NSString+Ext.h>
@@ -583,6 +584,19 @@ NSString *iCalWeekDayString[] = { @"SU", @"MO", @"TU", @"WE", @"TH", @"FR",
     }
 }
 
+- (NSArray *) bySetPos
+{
+  NSArray *lists, *bySetPos;
+
+  lists = [self valuesForKey: @"bysetpos"];
+  if ([lists count] > 0)
+    bySetPos = [lists objectAtIndex: 0];
+  else
+    bySetPos = nil;
+
+  return bySetPos;
+}
+
 // - (iCalWeekDay) weekDayForiCalRepre: (NSString *) _weekDay
 // {
 //   iCalWeekDay day;
@@ -853,6 +867,15 @@ NSString *iCalWeekDayString[] = { @"SU", @"MO", @"TU", @"WE", @"TH", @"FR",
 //       byDay.mask |= day;
 //     }
 // }
+
+/* versit key ordering */
+- (NSArray *) orderOfValueKeys
+{
+  return [NSArray arrayWithObjects: @"freq", @"interval", @"count", @"until",
+                  @"bymonth", @"byweekno", @"byyearday", @"bymonthday",
+                  @"byday", @"byhour", @"byminute", @"bysecond", @"bysetpos",
+                  nil];
+}
 
 /* key/value coding */
 

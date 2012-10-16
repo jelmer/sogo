@@ -263,6 +263,7 @@ static NSNumber *sharedYes = nil;
       /* 86400 / 2 = 43200. We hardcode that value in order to avoid
          integer and float confusion. */
       davTimeHalfLimitSeconds = davCalendarStartTimeLimit * 43200;
+      componentSet = nil;
     }
 
   return self;
@@ -273,6 +274,7 @@ static NSNumber *sharedYes = nil;
   [aclMatrix release];
   [stripFields release];
   [uidToFilename release];
+  [componentSet release];
   [super dealloc];
 }
 
@@ -448,16 +450,23 @@ static NSNumber *sharedYes = nil;
 
 - (NSString *) _sqlStringRangeFrom: (NSCalendarDate *) _startDate
                                 to: (NSCalendarDate *) _endDate
+                             cycle: (BOOL) _isCycle
 {
+  NSString *format;
   unsigned int start, end;
 
   start = (unsigned int) [_startDate timeIntervalSince1970];
   end = (unsigned int) [_endDate timeIntervalSince1970];
 
   // vTODOs don't necessarily have start/end dates
-  return [NSString stringWithFormat:
-                     @" AND (c_startdate = NULL OR c_startdate <= %u) AND (c_enddate = NULL OR c_enddate >= %u)",
-                   end, start];
+  if (_isCycle)
+    format = (@"(c_startdate = NULL OR c_startdate <= %u)"
+              @" AND (c_cycleenddate = NULL OR c_cycleenddate >= %u)");
+  else
+    format = (@"(c_startdate = NULL OR c_startdate <= %u)"
+              @" AND (c_enddate = NULL OR c_enddate >= %u)");
+
+  return [NSString stringWithFormat: format, end, start];
 }
 
 - (NSString *) aclSQLListingFilter
@@ -497,74 +506,16 @@ static NSNumber *sharedYes = nil;
   return filter;
 }
 
-- (NSArray *) bareFetchFields: (NSArray *) fields
-                         from: (NSCalendarDate *) startDate
-                           to: (NSCalendarDate *) endDate 
-                        title: (NSString *) title
-                    component: (NSString *) component
-            additionalFilters: (NSString *) filters
+- (NSString *) componentSQLFilter
 {
-  EOQualifier *qualifier;
-  GCSFolder *folder;
-  NSString *sql, *dateSqlString, *titleSqlString, *componentSqlString,
-    *privacySQLString;
-  NSMutableString *filterSqlString;
-  NSArray *records;
+  NSString *filter;
 
-  folder = [self ocsFolder];
-  if (startDate && endDate)
-    dateSqlString = [self _sqlStringRangeFrom: startDate to: endDate];
+  if ([self showCalendarTasks])
+    filter = nil;
   else
-    dateSqlString = @"";
+    filter = @"c_component != 'vtodo'";
 
-  if ([title length])
-    titleSqlString = [NSString stringWithFormat: @"AND (c_title"
-			       @" isCaseInsensitiveLike: '%%%@%%')", title];
-  else
-    titleSqlString = @"";
-
-  if (component)
-    componentSqlString = [NSString stringWithFormat: @"AND c_component = '%@'",
-                                   component];
-  else
-    componentSqlString = @"";
-  filterSqlString = [NSMutableString string];
-  if ([filters length])
-    [filterSqlString appendFormat: @"AND (%@)", filters];
-
-  privacySQLString = [self aclSQLListingFilter];
-  if (privacySQLString)
-    {
-      if ([privacySQLString length])
-        [filterSqlString appendFormat: @"AND (%@)", privacySQLString];
-
-      /* prepare mandatory fields */
-
-      sql = [NSString stringWithFormat: @"%@%@%@%@",
-                      dateSqlString, titleSqlString, componentSqlString,
-                      filterSqlString];
-      /* sql is empty when we fetch everything (all parameters are nil) */
-      if ([sql length] > 0)
-        {
-          sql = [sql substringFromIndex: 4];
-          qualifier = [EOQualifier qualifierWithQualifierFormat: sql];
-        }
-      else
-        qualifier = nil;
-
-      /* fetch non-recurrent apts first */
-
-      records = [folder fetchFields: fields matchingQualifier: qualifier];
-    }
-  else
-    records = [NSArray array];
-  
-  if ([self _checkIfWeCanRememberRecords: fields])
-    {
-      [self _rememberRecords: records];
-    }
-
-  return records;
+  return filter;
 }
 
 - (BOOL) _checkIfWeCanRememberRecords: (NSArray *) fields
@@ -585,6 +536,74 @@ static NSNumber *sharedYes = nil;
   while ((currentRecord = [recordsEnum nextObject]))
     [childRecords setObject: currentRecord
 		  forKey: [currentRecord objectForKey: @"c_name"]];
+}
+
+#warning filters should make use of EOQualifier
+- (NSArray *) bareFetchFields: (NSArray *) fields
+                         from: (NSCalendarDate *) startDate
+                           to: (NSCalendarDate *) endDate 
+                        title: (NSString *) title
+                    component: (NSString *) component
+            additionalFilters: (NSString *) filters
+{
+  EOQualifier *qualifier;
+  GCSFolder *folder;
+  NSMutableArray *baseWhere;
+  NSString *where, *privacySQLString;
+  NSArray *records;
+
+  folder = [self ocsFolder];
+
+  baseWhere = [NSMutableArray arrayWithCapacity: 32];
+  if (startDate && endDate)
+    [baseWhere addObject: [self _sqlStringRangeFrom: startDate to: endDate
+                                              cycle: NO]];
+
+  if ([title length])
+    [baseWhere
+      addObject: [NSString stringWithFormat: @"c_title isCaseInsensitiveLike: '%%%@%%'",
+                           [title stringByReplacingString: @"'"  withString: @"\\'\\'"]]];
+
+  if (component)
+    {
+      if ([component isEqualToString: @"vtodo"] && ![self showCalendarTasks])
+        return [NSArray array];
+      else
+        [baseWhere addObject: [NSString stringWithFormat: @"c_component = '%@'",
+                                        component]];
+    }
+  else if (![self showCalendarTasks])
+      [baseWhere addObject: @"c_component != 'vtodo'"];
+
+  if ([filters length])
+    [baseWhere addObject: filters];
+
+  privacySQLString = [self aclSQLListingFilter];
+  if (privacySQLString)
+    {
+      if ([privacySQLString length])
+        [baseWhere addObject: privacySQLString];
+
+      /* sql is empty when we fetch everything (all parameters are nil) */
+      if ([baseWhere count] > 0)
+        {
+          where = [baseWhere componentsJoinedByString: @" AND "];
+          qualifier = [EOQualifier qualifierWithQualifierFormat: where];
+        }
+      else
+        qualifier = nil;
+
+      /* fetch non-recurrent apts first */
+
+      records = [folder fetchFields: fields matchingQualifier: qualifier];
+    }
+  else
+    records = [NSArray array];
+  
+  if ([self _checkIfWeCanRememberRecords: fields])
+    [self _rememberRecords: records];
+
+  return records;
 }
 
 /**
@@ -1084,7 +1103,7 @@ firstInstanceCalendarDateRange: (NGCalendarDateRange *) fir
   GCSFolder *folder;
   NSMutableArray *fields, *ma;
   NSArray *records;
-  NSMutableString *baseWhere;
+  NSMutableArray *baseWhere;
   NSString *where, *dateSqlString, *privacySQLString, *currentLogin;
   NSCalendarDate *endDate;
   NGCalendarDateRange *r;
@@ -1103,11 +1122,17 @@ firstInstanceCalendarDateRange: (NGCalendarDateRange *) fir
       return nil;
     }
 
+  baseWhere = [NSMutableArray arrayWithCapacity: 32];
   if (_component)
-    baseWhere = [NSMutableString stringWithFormat: @"AND c_component = '%@'",
-                               _component];
-  else
-    baseWhere = [NSMutableString string];
+    {
+      if ([_component isEqualToString: @"vtodo"] && ![self showCalendarTasks])
+        return [NSArray array];
+      else
+        [baseWhere addObject: [NSString stringWithFormat: @"c_component = '%@'",
+                                               _component]];
+    }
+  else if (![self showCalendarTasks])
+      [baseWhere addObject: @"c_component != 'vtodo'"];
 
   if (_startDate)
     {
@@ -1117,27 +1142,28 @@ firstInstanceCalendarDateRange: (NGCalendarDateRange *) fir
         endDate = [NSCalendarDate distantFuture];
       r = [NGCalendarDateRange calendarDateRangeWithStartDate: _startDate
                                                       endDate: endDate];
-      dateSqlString = [self _sqlStringRangeFrom: _startDate to: endDate];
+      dateSqlString = [self _sqlStringRangeFrom: _startDate to: endDate
+                                          cycle: NO];
     }
   else
     {
       r = nil;
-      dateSqlString = @"";
+      dateSqlString = nil;
     }
 
   privacySQLString = [self aclSQLListingFilter];
   if (privacySQLString)
     {
       if ([privacySQLString length])
-        [baseWhere appendFormat: @"AND %@", privacySQLString];
+        [baseWhere addObject: privacySQLString];
 
       if ([title length])
         [baseWhere
-          appendFormat: @"AND c_title isCaseInsensitiveLike: '%%%@%%'",
-          [title stringByReplacingString: @"'"  withString: @"\\'\\'"]];
+          addObject: [NSString stringWithFormat: @"c_title isCaseInsensitiveLike: '%%%@%%'",
+                               [title stringByReplacingString: @"'"  withString: @"\\'\\'"]]];
 
       if ([filters length])
-        [baseWhere appendFormat: @"AND (%@)", filters];
+        [baseWhere addObject: [NSString stringWithFormat: @"(%@)", filters]];
 
       /* prepare mandatory fields */
 
@@ -1149,14 +1175,16 @@ firstInstanceCalendarDateRange: (NGCalendarDateRange *) fir
       [fields addObjectUniquely: @"c_isallday"];
 
       if (canCycle)
-        where = [NSString stringWithFormat: @"%@ %@ AND c_iscycle = 0",
-                          baseWhere, dateSqlString];
-      else
-        where = baseWhere;
+        {
+          if (dateSqlString)
+            [baseWhere addObject: dateSqlString];
+          [baseWhere addObject: @"c_iscycle = 0"];
+        }
+
+      where = [baseWhere componentsJoinedByString: @" AND "];
 
       /* fetch non-recurrent apts first */
-      qualifier = [EOQualifier qualifierWithQualifierFormat:
-                                  [where substringFromIndex: 4]];
+      qualifier = [EOQualifier qualifierWithQualifierFormat: where];
       records = [folder fetchFields: fields matchingQualifier: qualifier];
 
       if (records)
@@ -1171,8 +1199,22 @@ firstInstanceCalendarDateRange: (NGCalendarDateRange *) fir
       // Fetch recurrent apts now, *excluding* events with no cycle end.
       if (canCycle && _endDate)
         {
-          where = [NSString stringWithFormat: @"%@ AND c_iscycle = 1", baseWhere];
-          qualifier = [EOQualifier qualifierWithQualifierFormat: [where substringFromIndex: 4]];
+          /* we know the last element of "baseWhere" is the c_iscycle
+             condition */
+          [baseWhere removeLastObject];
+
+          /* replace the date range */
+          if (r)
+            {
+              [baseWhere removeLastObject];
+              dateSqlString = [self _sqlStringRangeFrom: _startDate
+                                                     to: endDate
+                                                  cycle: YES];
+              [baseWhere addObject: dateSqlString];
+            }
+          [baseWhere addObject: @"c_iscycle = 1"];
+          where = [baseWhere componentsJoinedByString: @" AND "];
+          qualifier = [EOQualifier qualifierWithQualifierFormat: where];
           records = [folder fetchFields: fields matchingQualifier: qualifier];
           if (records)
             {
@@ -1681,21 +1723,25 @@ firstInstanceCalendarDateRange: (NGCalendarDateRange *) fir
 {
   NSCalendarDate *startDate;
   NSString *filter;
+  NSMutableArray *filters;
   int startDateSecs;
 
+  filters = [NSMutableArray arrayWithCapacity: 8];
   startDate = [self _getMaxStartDate];
   if (startDate)
     {
       startDateSecs = (int) [startDate timeIntervalSince1970];
-      filter = [NSString stringWithFormat: @"c_enddate = NULL"
+      filter = [NSString stringWithFormat: @"(c_enddate = NULL"
                          @" OR (c_enddate >= %d AND c_iscycle = 0)"
-                         @" OR (c_cycleenddate >= %d AND c_iscycle = 1)",
+                         @" OR (c_cycleenddate >= %d AND c_iscycle = 1))",
                          startDateSecs, startDateSecs];
+      [filters addObject: filter];
     }
-  else
-    filter = @"";
 
-  return filter;
+  if (![self showCalendarTasks])
+    [filters addObject: @"c_component != 'vtodo'"];
+
+  return [filters componentsJoinedByString: @" AND "];
 }
 
 - (Class) objectClassForContent: (NSString *) content
@@ -1729,6 +1775,7 @@ firstInstanceCalendarDateRange: (NGCalendarDateRange *) fir
   return [name isEqualToString: @"OPTIONS"];
 }
 
+/*
 - (id) lookupComponentByUID: (NSString *) uid
 {
   NSString *filename;
@@ -1746,6 +1793,7 @@ firstInstanceCalendarDateRange: (NGCalendarDateRange *) fir
 
   return nil;
 }
+*/
 
 - (id) lookupName: (NSString *)_key
         inContext: (id)_ctx
@@ -2026,9 +2074,12 @@ firstInstanceCalendarDateRange: (NGCalendarDateRange *) fir
       gdVEventCol = [NSArray arrayWithObjects: [gdRT objectAtIndex: 0],
                   XMLNS_GROUPDAV, nil];
       [colType addObject: gdVEventCol];
-      gdVTodoCol = [NSArray arrayWithObjects: [gdRT objectAtIndex: 1],
-                 XMLNS_GROUPDAV, nil];
-      [colType addObject: gdVTodoCol];
+      if ([self showCalendarTasks])
+        {
+          gdVTodoCol = [NSArray arrayWithObjects: [gdRT objectAtIndex: 1],
+                                XMLNS_GROUPDAV, nil];
+          [colType addObject: gdVTodoCol];
+        }
       if ([nameInContainer isEqualToString: @"personal"])
         [colType addObject: [NSArray arrayWithObjects: @"schedule-outbox",
                                      XMLNS_CALDAV, nil]];
@@ -2039,27 +2090,28 @@ firstInstanceCalendarDateRange: (NGCalendarDateRange *) fir
 
 - (SOGoWebDAVValue *) davCalendarComponentSet
 {
-  static SOGoWebDAVValue *componentSet = nil;
   NSMutableArray *components;
 
   if (!componentSet)
     {
-      components = [NSMutableArray array];
+      components = [[NSMutableArray alloc] initWithCapacity: 2];
       /* Totally hackish.... we use the "n1" prefix because we know our
          extensions will assign that one to ..:caldav but we really need to
          handle element attributes */
       [components addObject: [SOGoWebDAVValue
                                valueForObject: @"<n1:comp name=\"VEVENT\"/>"
                                    attributes: nil]];
-      [components addObject: [SOGoWebDAVValue
-                               valueForObject: @"<n1:comp name=\"VTODO\"/>"
-                                   attributes: nil]];
+      if ([self showCalendarTasks])
+        [components addObject: [SOGoWebDAVValue
+                                 valueForObject: @"<n1:comp name=\"VTODO\"/>"
+                                     attributes: nil]];
       componentSet
         = [davElementWithContent (@"supported-calendar-component-set",
                                   XMLNS_CALDAV,
                                   components)
                                  asWebDAVValue];
       [componentSet retain];
+      [components release];
     }
 
   return componentSet;
@@ -2100,6 +2152,37 @@ firstInstanceCalendarDateRange: (NGCalendarDateRange *) fir
   else
     error = [NSException exceptionWithHTTPStatus: 400
                                           reason: @"Bad transparency value."];
+
+  return error;
+}
+
+- (NSString *) davCalendarShowAlarms
+{
+  NSString *boolean;
+
+  if ([self showCalendarAlarms])
+    boolean = @"true";
+  else
+    boolean = @"false";
+
+  return boolean;
+}
+
+- (NSException *) setDavCalendarShowAlarms: (id) newBoolean
+{
+  NSException *error;
+
+  error = nil;
+
+  if ([newBoolean isEqualToString: @"true"]
+      || [newBoolean isEqualToString: @"1"])
+    [self setShowCalendarAlarms: YES];
+  else if ([newBoolean isEqualToString: @"false"]
+           || [newBoolean isEqualToString: @"0"])
+    [self setShowCalendarAlarms: NO];
+  else
+    error = [NSException exceptionWithHTTPStatus: 400
+                                          reason: @"Bad boolean value."];
 
   return error;
 }
@@ -2629,22 +2712,24 @@ firstInstanceCalendarDateRange: (NGCalendarDateRange *) fir
   return (![inactiveFolders containsObject: nameInContainer]);
 }
 
-- (BOOL) importComponent: (iCalEntityObject *) event
-		timezone: (NSString *) timezone
+- (NSString *) importComponent: (iCalEntityObject *) event
+                      timezone: (iCalTimeZone *) timezone
 {
   SOGoAppointmentObject *object;
   NSString *uid;
-  NSString *content;
+  NSMutableString *content;
 
   uid =  [self globallyUniqueObjectId];
   [event setUid: uid];
   object = [SOGoAppointmentObject objectWithName: uid
                                     inContainer: self];
   [object setIsNew: YES];
-  content = 
-    [NSString stringWithFormat: @"BEGIN:VCALENDAR\n%@%@\nEND:VCALENDAR", 
-	      timezone, [event versitString]];
-  return ([object saveContentString: content] == nil);
+  content = [NSMutableString stringWithString: @"BEGIN:VCALENDAR\n"];
+  if (timezone)
+    [content appendFormat: @"%@\n",  [timezone versitString]];
+  [content appendFormat: @"%@\nEND:VCALENDAR", [event versitString]];
+  
+  return ([object saveContentString: content] == nil) ? uid : nil;
 }
 
 /**
@@ -2656,11 +2741,12 @@ firstInstanceCalendarDateRange: (NGCalendarDateRange *) fir
 {
   NSArray *vtimezones;
   NSMutableArray *components;
-  NSMutableDictionary *timezones;
-  NSString *tz;
+  NSMutableDictionary *timezones, *uids;
+  NSString *tzId, *uid, *originalUid, *content;
   iCalEntityObject *element;
   iCalDateTime *startDate;
   iCalTimeZone *timezone;
+  iCalCalendar *masterCalendar;
   iCalEvent *event;
 
   int imported, count, i;
@@ -2676,27 +2762,29 @@ firstInstanceCalendarDateRange: (NGCalendarDateRange *) fir
       for (i = 0; i < count; i++)
         {
           timezone = (iCalTimeZone *)[vtimezones objectAtIndex: i];
-          [timezones setValue: [NSString stringWithFormat: @"%@\n", [timezone versitString]]
+          [timezones setValue: timezone
                        forKey: [timezone tzId]];
         }
 
       // Parse events/todos/journals and import them
+      uids = [NSMutableDictionary dictionary];
       components = [[calendar events] mutableCopy];
       [components autorelease];
       [components addObjectsFromArray: [calendar todos]];
-      [components addObjectsFromArray: [calendar journals]];
-      [components addObjectsFromArray: [calendar freeBusys]];
+      // [components addObjectsFromArray: [calendar journals]];
+      // [components addObjectsFromArray: [calendar freeBusys]];
       count = [components count];
       for (i = 0; i < count; i++)
         {
-          tz = nil;
+          timezone = nil;
           element = [components objectAtIndex: i];
           // Use the timezone of the start date.
           startDate = (iCalDateTime *) [element uniqueChildWithTag: @"dtstart"];
           if (startDate)
             {
-              timezone = [startDate timeZone];
-              tz = [timezones valueForKey: [timezone tzId]];
+              tzId = [startDate value: 0 ofAttribute: @"tzid"];
+              if ([tzId length])
+                timezone = [timezones valueForKey: tzId];
               if ([element isKindOfClass: [iCalEvent class]])
                 {
                   event = (iCalEvent *)element;
@@ -2708,13 +2796,51 @@ firstInstanceCalendarDateRange: (NGCalendarDateRange *) fir
                       else
                         [event setDuration: @"PT1H"];
                       
-                      [self errorWithFormat: @"Importing event with no end date; setting duration to %@", [event duration]];
+                      [self errorWithFormat: @"Importing event with no end date; setting duration to %@ for UID = %@", [event duration], [event uid]];
+                    }
+		  //
+		  // We check for broken all-day events (like the ones coming from the "WebCalendar" tool) where
+		  // the start date is equal to the end date. This clearly violates the RFC:
+		  //
+		  // 3.8.2.2. Date-Time End
+		  // The value MUST be later in time than the value of the "DTSTART" property. 
+		  //
+		  if ([event isAllDay] && [[event startDate] isEqual: [event endDate]])
+		    {
+		      [event setEndDate: [[event startDate] dateByAddingYears: 0  months: 0  days: 1  hours: 0  minutes: 0  seconds: 0]];
+		      [self errorWithFormat: @"Fixed broken all-day event; setting end date to %@ for UID = %@", [event endDate], [event uid]];
+		    }
+                  if ([event recurrenceId])
+                    {
+                      // Event is an occurrence of a repeating event
+                      if ((uid = [uids valueForKey: [event uid]]))
+                        {
+                          SOGoAppointmentObject *master = [self lookupName: uid
+                                                                 inContext: context
+                                                                   acquire: NO];
+                          if (master)
+                            {
+                              // Associate the occurrence to the master event
+                              masterCalendar = [master calendar: NO secure: NO];
+                              [masterCalendar addToEvents: event];
+                              if (timezone)
+                                [masterCalendar addTimeZone: timezone];
+                              content = [masterCalendar versitString];
+                              [master saveContentString: content];
+                              continue;
+                            }
+                        }
                     }
                 }
             }
-          if ([self importComponent: element
-                           timezone: (tz == nil? @"" : tz)])
-            imported++;
+          originalUid = [element uid];
+          if ((uid = [self importComponent: element
+                                  timezone: timezone]))
+            {
+              imported++;
+              [uids setValue: uid
+                      forKey: originalUid];
+            }
         }
     }
   

@@ -2911,112 +2911,71 @@ Mailbox.prototype = {
 };
 
 function configureDraggables() {
-    var mainElement = $("dragDropVisual");
-
-    if (mainElement == null) {
-        mainElement = new Element("div", {id: "dragDropVisual"});
-        document.body.appendChild(mainElement);
-        mainElement.absolutize();
-    }
-    mainElement.hide();
-
-    new Draggable("dragDropVisual",
-                  { handle: "messageListBody",
-                    onStart: startDragging,
-                    onEnd: stopDragging,
-                    onDrag: whileDragging,
-                    scroll: "folderTreeContent",
-                    delay: 250 });
+    var table = jQuery("#messageListBody");
+    table.draggable({
+        addClasses: false,
+        helper: function (event) { return '<div id="dragDropVisual"></div>'; },
+        start: startDragging,
+        drag: whileDragging,
+        stop: stopDragging,
+        appendTo: 'body',
+        cursorAt: { top: 15, right: 15 },
+        scroll: false,
+        distance: 4,
+        zIndex: 20
+    });
 }
 
 function configureDroppables() {
-    var drops = $$("div#mailboxTree div.dTreeNode a.node span.nodeName");
-
-    if (Mailer.drops)
-        Mailer.drops.each(function (drop) { Droppables.remove(drop); });
-
-    drops.each(function (drop) {
-                   var dataname = drop.parentNode.parentNode.getAttribute("dataname");
-                   var acceptClass = "account";
-                   if (dataname.length > 0) {
-                       var parts = dataname.split("/");
-                       acceptClass += parts[1];
-                   }
-                   var parent = drop.parentNode.parentNode;
-                   if (parent.getAttribute("datatype") != "account") {
-                       drop.identify();
-                       Droppables.add(drop.id,
-                                      { hoverclass: "genericHoverClass",
-                                        accept: [ acceptClass ],
-                                        onDrop: dropAction });
-                       Mailer.drops.push(drop);
-                   }
-               });
+    jQuery('#mailboxTree .dTreeNode[datatype!="account"][datatype!="additional"] .node .nodeName').droppable({
+        hoverClass: 'genericHoverClass',
+              drop: dropAction });
 }
 
-function startDragging (itm, e) {
-    if (!Event.isLeftClick(e))
-        return;
-    var target = Event.element(e);
-    if (target.up('TBODY') == undefined)
-        return;
+function startDragging(event, ui) {
+    var handle = ui.helper;
+    var count = $('messageListBody').getSelectedRowsId().length;
 
-    $("mailboxList").setStyle({ overflow: "visible" });
-
-    var row = target.up('TR');
-    var handle = $("dragDropVisual");
-    var selectedIds = $("messageListBody").getSelectedRowsId();
-    var count = selectedIds.length;
-    var rowId = row.id;
-
-    if (count == 0 || selectedIds.indexOf(rowId) < 0) {
-        if (target.tagName != 'TD')
-            target = target.up('TD');
-        onRowClick(e, target);
-        selectedIds = $("messageListBody").getSelectedRowsId();
-        count = selectedIds.length;
+    if (count == 0) {
+        jQuery(this).trigger("stop");
+        return false;
     }
-    handle.update(count);
+    handle.html(count);
 
-    if (Mailer.currentMailbox) {
-        var parts = Mailer.currentMailbox.split("/");
-        handle.addClassName("account" + parts[1]);
-    }
-    if (e.shiftKey) {
-        handle.addClassName("copy");
+    if (event.shiftKey) {
+        handle.addClass("copy");
     }
     handle.show();
 }
 
-function whileDragging (itm, e) {
-    if (e) {
-        var handle = $("dragDropVisual");
-        if (e.shiftKey)
-            handle.addClassName("copy");
-        else if (handle.hasClassName("copy"))
-            handle.removeClassName("copy");
+function whileDragging(event, ui) {
+    if (event) {
+        var handle = ui.helper;
+        if (event.shiftKey)
+            handle.addClass("copy");
+        else if (handle.hasClass("copy"))
+            handle.removeClass("copy");
     }
 }
 
-function stopDragging() {
-    $("mailboxList").setStyle({ overflow: "auto", overflowX: "hidden" });
-    var handle = $("dragDropVisual");
+function stopDragging(event, ui) {
+    var handle = ui.helper;
     handle.hide();
-    if (handle.hasClassName("copy"))
-        handle.removeClassName("copy");
+    if (handle.hasClass("copy"))
+        handle.removeClass("copy");
     for (var i = 0; i < accounts.length; i++) {
-        handle.removeClassName("account" + i);
+        handle.removeClass("account" + i);
     }
 }
 
-function dropAction (dropped, zone, e) {
-    var destination = zone.up("div.dTreeNode");
+function dropAction(event, ui) {
+    var destination = $(this).up("div.dTreeNode");
 
     var sourceAct = Mailer.currentMailbox.split("/")[1];
     var destAct = destination.getAttribute("dataname").split("/")[1];
     if (sourceAct == destAct) {
         var f;
-        if ($("dragDropVisual").hasClassName("copy")) {
+        if (ui.helper.hasClass("copy")) {
             // Message(s) copied
             f = onMailboxMenuCopy.bind(destination);
         }

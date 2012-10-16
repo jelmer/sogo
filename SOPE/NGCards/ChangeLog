@@ -1,3 +1,47 @@
+2012-04-23  Wolfgang Sourdeau  <wsourdeau@inverse.ca>
+
+	* iCalMonthlyRecurrenceCalculator.m (NGMonthDaySet_clear): make
+	use of memset, which is expected to be faster.
+	(-recurrenceRangesWithinCalendarDateRange:): added handling of
+	"BYSETPOS" for "BYDAY" sets.
+
+2012-04-20  Wolfgang Sourdeau  <wsourdeau@inverse.ca>
+
+	* iCalTrigger.m (-nextAlarmDate): new method including most of
+	the old code from -[iCalAlarm nextAlarmDate]. Added support for
+	DATE-TIME values.
+
+	* iCalAlarm.m (-nextAlarmDate): now a proxy method for
+	-[iCalTrigger nextAlarmDate].
+
+2012-04-18  Wolfgang Sourdeau  <wsourdeau@inverse.ca>
+
+	* iCalRecurrenceRule.m (-orderOfValueKeys): overrriden method.
+
+	* NSDictionary+NGCards.m
+	(-versitRenderInString:withKeyOrdering:asAttributes:): now takes
+	an "ordering" parameter resulting from the methods below and
+	reorder the dictionary keys as specified.
+
+	* CardElement.m (-orderOfAttributeKeys, -orderOfValueKeys): new
+	methods that return an ordered array of value keys, used for
+	rendering data in a way that is acceptable to certain picky
+	clients.
+
+2012-04-11  Francis Lachapelle  <flachapelle@inverse.ca>
+
+	* iCalWeeklyRecurrenceCalculator.m
+	(-recurrenceRangesWithinCalendarDateRange): we now return
+	occurrences that intersects with the period (not only occurrences
+	within the period). We no longer rely on NSCalendarDate to compute
+	the number of days since the master event start date (it is bugged).
+
+2012-03-26  Wolfgang Sourdeau  <wsourdeau@inverse.ca>
+
+	* iCalDateTime.m (_setDateTime:forAllDayEntity:): set or unset the
+	"VALUE" parameter to the date instance, depending on its the
+	all-dayness.
+
 2012-03-11  Wolfgang Sourdeau  <wsourdeau@inverse.ca>
 
 	* iCalEvent.m (-hasDuration): returns NO when the value is present

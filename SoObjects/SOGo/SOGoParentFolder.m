@@ -157,14 +157,16 @@ static SoSecurityManager *sm = nil;
 {
   NSArray *roles;
   SOGoGCSFolder *folder;
+  SOGoUser *folderOwner;
 
   roles = [[context activeUser] rolesForObject: self inContext: context];
+  folderOwner = [SOGoUser userWithLogin: [self ownerInContext: context]];
 
   // We autocreate the calendars if the user is the owner, a superuser or
   // if it's a resource as we won't necessarily want to login as a resource
   // in order to create its database tables.
   if ([roles containsObject: SoRole_Owner] ||
-      [[context activeUser] isResource])
+      (folderOwner && [folderOwner isResource]))
     {
       folder = [subFolderClass objectWithName: @"personal" inContainer: self];
       [folder setDisplayName: [self defaultFolderName]];
@@ -251,7 +253,7 @@ static SoSecurityManager *sm = nil;
   return nil;
 }
 
-- (void) _appendSubscribedSource: (NSString *) sourceKey
+- (BOOL) _appendSubscribedSource: (NSString *) sourceKey
 {
   SOGoGCSFolder *subscribedFolder;
 
@@ -262,32 +264,66 @@ static SoSecurityManager *sm = nil;
       && ![sm validatePermission: SOGoPerm_AccessObject
 			onObject: subscribedFolder
 		       inContext: context])
-    [subscribedSubFolders setObject: subscribedFolder
-			     forKey: [subscribedFolder nameInContainer]];
+    {
+      [subscribedSubFolders setObject: subscribedFolder
+			       forKey: [subscribedFolder nameInContainer]];
+      return YES;
+    }
+  
+  return NO;
 }
 
 - (NSException *) appendSubscribedSources
 {
-  NSArray *subscribedReferences;
-  SOGoUser *ownerUser;
+  NSMutableDictionary *folderDisplayNames;
+  NSMutableArray *subscribedReferences;
   SOGoUserSettings *settings;
   NSEnumerator *allKeys;
   NSString *currentKey;
+  SOGoUser *ownerUser;
   NSException *error;
+  id o;
+
+  BOOL dirty;
 
   error = nil; /* we ignore non-DB errors at this time... */
+  dirty = NO;
 
   ownerUser = [SOGoUser userWithLogin: owner];
   settings = [ownerUser userSettings];
-  subscribedReferences = [[settings objectForKey: nameInContainer]
-			   objectForKey: @"SubscribedFolders"];
-  if ([subscribedReferences isKindOfClass: [NSArray class]])
-    {
-      allKeys = [subscribedReferences objectEnumerator];
-      while ((currentKey = [allKeys nextObject]))
-	[self _appendSubscribedSource: currentKey];
-    }
 
+  subscribedReferences = [NSMutableArray arrayWithArray: [[settings objectForKey: nameInContainer]
+							   objectForKey: @"SubscribedFolders"]];
+  o =  [[settings objectForKey: nameInContainer] objectForKey: @"FolderDisplayNames"];
+  if (o)
+    folderDisplayNames = [NSMutableDictionary dictionaryWithDictionary: o];
+  else
+    folderDisplayNames = nil;
+
+  allKeys = [subscribedReferences objectEnumerator];
+  while ((currentKey = [allKeys nextObject]))
+    {
+      if (![self _appendSubscribedSource: currentKey])
+	{
+	  // We no longer have access to this subscription, let's
+	  // remove it from the current list.
+	  [subscribedReferences removeObject: currentKey];
+	  [folderDisplayNames removeObjectForKey: currentKey];
+	  dirty = YES;
+	}
+    }
+  
+  // If we changed the folder subscribtion list, we must sync it
+  if (dirty)
+    {
+      if (subscribedReferences)
+        [[settings objectForKey: nameInContainer] setObject: subscribedReferences
+                                                     forKey: @"SubscribedFolders"];
+      if (folderDisplayNames)
+        [[settings objectForKey: nameInContainer] setObject: folderDisplayNames
+                                                     forKey: @"FolderDisplayNames"];
+    }
+	    
   return error;
 }
 

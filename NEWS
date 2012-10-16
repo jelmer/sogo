@@ -1,3 +1,37 @@
+1.3.15 (2012-05-15)
+-------------------
+New Features
+ - sources address books are now exposed in Apple and iOS AddressBook app
+   using the "directory gateway" extension of CardDAV
+ - sogo-tool: new "expire-sessions" command
+ - the all-day events container is now resized progressively
+ - added handling of "BYSETPOS" for "BYDAY" sets in monthly recurrence
+   calculator
+ - new domain default (SOGoMailCustomFromEnabled) to allow users to change
+   their "from" and "reply-to" headers 
+ - access to external calendar subscriptions (.ics) with authentication
+ - new domain default (SOGoHideSystemEMail) to hide or not the system
+   email. This is currently limited to CalDAV operations
+
+Enhancements
+ - updated Spanish (Argentina), German, Dutch translations
+ - updated CKEditor to version 3.6.3
+ - automatically add/remove attendees to recurrence exceptions when they are
+   being added to the master event
+ - replaced the Scriptaculous Javascript framework by jQuery to improve the
+   drag'n'drop experience
+ - updated timezone definition files
+
+Bug Fixes
+ - fixed wrong date validation in preferences module affecting French users
+ - fixed bugs in weekly recurrence calculator
+ - when saving a draft, fixed content-transfer-encoding to properly handle
+   8bit data
+ - escaped single-quote in HTML view of contacts
+ - fixed support of recurrent events with Apple iCal
+ - fixed overbooking handling of resources with recurrent events
+ - fixed auto-accept of resources when added later to an event
+
 1.3.14 (2012-03-23)
 -------------------
 Enhancements

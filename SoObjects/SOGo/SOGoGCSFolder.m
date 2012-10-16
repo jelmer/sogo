@@ -617,19 +617,42 @@ static NSArray *childRecordFields = nil;
   return filter;
 }
 
+- (NSString *) componentSQLFilter
+{
+  return nil;
+}
+
 - (NSArray *) toOneRelationshipKeys
 {
   NSArray *records, *names;
-  NSString *sqlFilter;
-  EOQualifier *qualifier;
+  NSString *sqlFilter, *compFilter;
+  EOQualifier *aclQualifier, *componentQualifier, *qualifier;
 
   sqlFilter = [self aclSQLListingFilter];
   if (sqlFilter)
     {
       if ([sqlFilter length] > 0)
-        qualifier = [EOQualifier qualifierWithQualifierFormat: sqlFilter];
+        aclQualifier = [EOQualifier qualifierWithQualifierFormat: sqlFilter];
       else
-        qualifier = nil;
+        aclQualifier = nil;
+
+      compFilter = [self componentSQLFilter];
+      if ([compFilter length] > 0)
+        {
+          componentQualifier
+            = [EOQualifier qualifierWithQualifierFormat: compFilter];
+          if (aclQualifier)
+            {
+              qualifier = [[EOAndQualifier alloc] initWithQualifiers:
+                                                    aclQualifier,
+                                                  componentQualifier];
+              [qualifier autorelease];
+            }
+          else
+            qualifier = componentQualifier;
+        }
+      else
+        qualifier = aclQualifier;
 
       records = [[self ocsFolder] fetchFields: childRecordFields
                             matchingQualifier: qualifier];
@@ -817,19 +840,48 @@ static NSArray *childRecordFields = nil;
   return [folderSubscription containsObject: [self folderReference]];
 }
 
-- (BOOL) subscribeUser: (NSString *) subscribingUser
-              reallyDo: (BOOL) reallyDo
+- (BOOL) subscribeUserOrGroup: (NSString *) theIdentifier
+		     reallyDo: (BOOL) reallyDo
 {
+  NSMutableDictionary *moduleSettings;
   NSMutableArray *folderSubscription;
   NSString *subscriptionPointer;
+  NSMutableArray *allUsers;
   SOGoUserSettings *us;
-  NSMutableDictionary *moduleSettings;
+  NSDictionary *dict;
   SOGoUser *sogoUser;
   BOOL rc;
+  int i;
 
-  sogoUser = [SOGoUser userWithLogin: subscribingUser roles: nil];
-  if (sogoUser)
+  dict = [[SOGoUserManager sharedUserManager] contactInfosForUserWithUIDorEmail: theIdentifier];
+  
+  if ([[dict objectForKey: @"isGroup"] boolValue])
     {
+      SOGoGroup *aGroup;
+
+      aGroup = [SOGoGroup groupWithIdentifier: theIdentifier
+				     inDomain: [[context activeUser] domain]];
+      allUsers = [NSMutableArray arrayWithArray: [aGroup members]];
+
+      // We remove the active user from the group (if present) in order to
+      // not subscribe him to his own resource!
+      [allUsers removeObject: [context activeUser]];
+    }
+  else
+    {
+      sogoUser = [SOGoUser userWithLogin: theIdentifier roles: nil];
+      
+      if (sogoUser)
+	allUsers = [NSArray arrayWithObject: sogoUser];
+      else
+	allUsers = [NSArray array];
+    }
+  
+  rc = NO;
+
+  for (i = 0; i < [allUsers count]; i++)
+    {
+      sogoUser = [allUsers objectAtIndex: i];
       us = [sogoUser userSettings];
       moduleSettings = [us objectForKey: [container nameInContainer]];
       if (!(moduleSettings
@@ -860,14 +912,13 @@ static NSArray *childRecordFields = nil;
           [self removeFolderSettings: moduleSettings
                        withReference: subscriptionPointer];
           [folderSubscription removeObject: subscriptionPointer];
-        }
+        
+	}
 
       [us synchronize];
 
       rc = YES;
     }
-  else
-    rc = NO;
 
   return rc;
 }
@@ -922,8 +973,8 @@ static NSArray *childRecordFields = nil;
              LDAP call but more importantly, cache propagation calls that will
              create contention on GDNC. */
           for (count = 0; count < max; count++)
-            [self subscribeUser: [delegatedUsers objectAtIndex: count]
-                       reallyDo: reallyDo];
+            [self subscribeUserOrGroup: [delegatedUsers objectAtIndex: count]
+			      reallyDo: reallyDo];
         }
       else
         {
@@ -942,7 +993,7 @@ static NSArray *childRecordFields = nil;
                       @"You cannot (un)subscribe to a folder that you own!"];
         }
       else
-        [self subscribeUser: userLogin reallyDo: reallyDo];
+        [self subscribeUserOrGroup: userLogin reallyDo: reallyDo];
     }
 
   return response;
@@ -1995,7 +2046,7 @@ static NSArray *childRecordFields = nil;
   NSEnumerator *addFields;
 
   baseURL = [self davURLAsString];
-#warning review this when fixing http://www.scalableogo.org/bugs/view.php?id=276
+#warning review this when bug #276
   if (![baseURL hasSuffix: @"/"])
     baseURL = [NSString stringWithFormat: @"%@/", baseURL];
 

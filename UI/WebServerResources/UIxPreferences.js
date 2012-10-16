@@ -39,7 +39,8 @@ function savePreferences(sender) {
 	  sendForm = false;
 	}
         if ($("enableVacationEndDate") && $("enableVacationEndDate").checked) {
-            var endDate = new Date($("vacationEndDate_date").value);
+            var e = $("vacationEndDate_date");
+            var endDate = e.calendar.prs_date(e.value);
             var now = new Date();
             if (endDate.getTime() < now.getTime()) {
                 showAlertDialog(_("End date of your auto reply must be in the future."));
@@ -68,6 +69,10 @@ function savePreferences(sender) {
         $("mainForm").submit();
 
     return false;
+}
+
+function onAdjustTime(event) {
+    // unconditionally called from skycalendar.html
 }
 
 function prototypeIfyFilters() {
@@ -464,26 +469,23 @@ function initMailAccounts() {
         }
     }
 
-    var info = $("accountInfo");
-    var inputs = info.getElementsByTagName("input");
+    var inputs = $$("#accountInfo input");
     for (var i = 0; i < inputs.length; i++) {
         $(inputs[i]).observe("change", onMailAccountInfoChange);
     }
 
-    info = $("identityInfo");
-    inputs = info.getElementsByTagName("input");
+    inputs = $$("#identityInfo input");
     for (var i = 0; i < inputs.length; i++) {
         $(inputs[i]).observe("change", onMailIdentityInfoChange);
     }
     $("actSignature").observe("click", onMailIdentitySignatureClick);
     displayMailAccount(mailAccounts[0], true);
 
-    info = $("returnReceiptsInfo");
-    inputs = info.getElementsByTagName("input");
+    inputs = $$("#returnReceiptsInfo input");
     for (var i = 0; i < inputs.length; i++) {
         $(inputs[i]).observe("change", onMailReceiptInfoChange);
     }
-    inputs = info.getElementsByTagName("select");
+    inputs = $$("#returnReceiptsInfo select");
     for (var i = 0; i < inputs.length; i++) {
         $(inputs[i]).observe("change", onMailReceiptActionChange);
     }
@@ -651,17 +653,16 @@ function onMailAccountEntryClick(event) {
 }
 
 function displayMailAccount(mailAccount, readOnly) {
-    var fieldSet = $("accountInfo");
-    var inputs = fieldSet.getElementsByTagName("input");
-    for (var i = 0; i < inputs.length; i++) {
-        inputs[i].disabled = readOnly;
-        inputs[i].mailAccount = mailAccount;
-    }
-    fieldSet = $("identityInfo");
-    inputs = fieldSet.getElementsByTagName("input");
-    for (var i = 0; i < inputs.length; i++) {
-        inputs[i].disabled = readOnly;
-        inputs[i].mailAccount = mailAccount;
+    var inputs = $$("#accountInfo input");
+    inputs.each(function (i) { i.disabled = readOnly;
+                               i.mailAccount = mailAccount; });
+
+    inputs = $$("#identityInfo input");
+    inputs.each(function (i) { i.mailAccount = mailAccount; });
+    if (!mailCustomFromEnabled) {
+        for (var i = 0; i < 2; i++) {
+            inputs[i].disabled = readOnly;
+        }
     }
 
     var form = $("mainForm");
@@ -696,6 +697,7 @@ function displayMailAccount(mailAccount, readOnly) {
                     : {} );
     $("fullName").value = identity["fullName"] || "";
     $("email").value = identity["email"] || "";
+    $("replyTo").value = identity["replyTo"] || "";
 
     displayAccountSignature(mailAccount);
 

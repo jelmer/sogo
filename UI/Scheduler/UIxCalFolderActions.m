@@ -1,14 +1,15 @@
 /*
+  Copyright (C) 2006-2012 Inverse inc.
   Copyright (C) 2004-2005 SKYRIX Software AG
 
-  This file is part of OpenGroupware.org.
+  This file is part of SOGo
 
-  OGo is free software; you can redistribute it and/or modify it under
+  SOGo is free software; you can redistribute it and/or modify it under
   the terms of the GNU Lesser General Public License as published by the
   Free Software Foundation; either version 2, or (at your option) any
   later version.
 
-  OGo is distributed in the hope that it will be useful, but WITHOUT ANY
+  SOGo is distributed in the hope that it will be useful, but WITHOUT ANY
   WARRANTY; without even the implied warranty of MERCHANTABILITY or
   FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public
   License for more details.
@@ -20,12 +21,13 @@
 */
 
 #import <Foundation/NSValue.h>
-
-#import <SoObjects/SOGo/NSDictionary+Utilities.h>
-
+#import <NGObjWeb/NSException+HTTP.h>
 #import <NGObjWeb/WORequest.h>
 
+#import <SOGo/NSDictionary+Utilities.h>
+
 #import <Appointments/SOGoAppointmentFolder.h>
+#import <Appointments/SOGoWebAppointmentFolder.h>
 #import <Appointments/SOGoAppointmentFolderICS.h>
 
 #import "UIxCalFolderActions.h"
@@ -92,6 +94,45 @@
   [response setHeader: @"text/html" 
                forKey: @"content-type"];
   [(WOResponse*)response appendContentString: [rc jsonRepresentation]];
+  return response;
+}
+
+/* These methods are only available on instance of SOGoWebAppointmentFolder. */
+- (WOResponse *) reloadAction
+{
+  WOResponse *response;
+  NSDictionary *results;
+
+  response = [self responseWithStatus: 200];
+  [response setHeader: @"application/json" forKey: @"content-type"];
+  results = [[self clientObject] loadWebCalendar];
+  [response appendContentString: [results jsonRepresentation]];
+
+  return response;
+}
+
+- (WOResponse *) setCredentialsAction
+{
+  WORequest *request;
+  WOResponse *response;
+  NSString *username, *password;
+
+  request = [context request];
+
+  username = [[request formValueForKey: @"username"] stringByTrimmingSpaces];
+  password = [[request formValueForKey: @"password"] stringByTrimmingSpaces];
+  if ([username length] > 0 && [password length] > 0)
+    {
+      [[self clientObject] setUsername: username
+                           andPassword: password];
+      response = [self responseWith204];
+    }
+  else
+    response
+      = (WOResponse *) [NSException exceptionWithHTTPStatus: 400
+                                    reason: @"missing 'username' and/or"
+                                    @" 'password' parameters"];
+
   return response;
 }
 

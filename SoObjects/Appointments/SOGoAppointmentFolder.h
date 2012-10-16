@@ -1,6 +1,6 @@
 /*
   Copyright (C) 2004-2005 SKYRIX Software AG
-  Copyright (C) 2007-2009 Inverse inc.
+  Copyright (C) 2007-2012 Inverse inc.
 
   This file is part of OpenGroupware.org.
 
@@ -49,6 +49,8 @@
 @class NSTimeZone;
 @class GCSFolder;
 @class iCalCalendar;
+@class iCalTimeZone;
+@class SOGoWebDAVValue;
 
 typedef enum {
   SOGoAppointmentProxyPermissionNone = 0,
@@ -66,6 +68,7 @@ typedef enum {
   int davTimeLimitSeconds;
   int davTimeHalfLimitSeconds;
   BOOL userCanAccessObjectsClassifiedAs[iCalAccessClassCount];
+  SOGoWebDAVValue *componentSet;
 }
 
 - (BOOL) isActive;
@@ -160,8 +163,8 @@ typedef enum {
 - (BOOL) includeInFreeBusy;
 - (void) setIncludeInFreeBusy: (BOOL) newInclude;
 
-- (BOOL) importComponent: (iCalEntityObject *) event
-		timezone: (NSString *) timezone;
+- (NSString *) importComponent: (iCalEntityObject *) event
+                      timezone: (iCalTimeZone *) timezone;
 
 - (int) importCalendar: (iCalCalendar *) calendar;
 

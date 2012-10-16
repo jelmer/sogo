@@ -1,3 +1,440 @@
+2012-05-18  Jean Raby  <jraby@inverse.ca>
+
+	* SoObjects/Mailer/SOGoDraftObject.m (bodyPartForAttachmentWithName):
+	Merge back lost code to handle encoding of binary and rcf822 attachments.
+
+2012-05-15  Jean Raby  <jraby@inverse.ca>
+
+	* SoObjects/Appointments/SOGoAppointmentObject.m (_handleResourcesConflicts):
+	Deny access to resources if the resource's ACL don't allow the organizer
+	to read its freebusy info.
+	Without this, sogo would always auto-accept invitations from 'unprivileged'
+	users, potentially bypassing the multiplebooking parameter.
+	
+2012-05-14  Wolfgang Sourdeau  <wsourdeau@inverse.ca>
+
+	* UI/WebServerResources/UIxContactsUserFolders.js: folder ids are
+	in the form "user:module/folder", therefore we must remove the
+	first char, which is a slash.
+
+	* UI/WebServerResources/generic.js (subscribeToFolder): prepend a
+	"/" to the folder name, as it comes originally in the form
+	user:module/folder.
+
+	* UI/WebServerResources/UIxPreferences.js (initMailAccounts)
+	(displayMailAccount): getElementsByTagName seems too standard for
+	IE, we use $$() now so that we can invoke "each" on the result set
+	without triggering an exception.
+
+2012-05-09  Jean Raby  <jraby@inverse.ca>
+
+	* SoObjects/Appointments/SOGoAppointmentObject.m (PUTAction):
+	Delete bitrotten code that could end up duplicating attendees.
+	Behavior exposed by the new caldav tests
+
+	* Tests/Integration/config.py.in
+	* Tests/Integration/test-caldav-scheduling.py
+	* Tests/Integration/test-ical.py
+	* Tests/Integration/test-davacl.py:
+	Use an unprivileged webdavclient where possible.
+	This would have uncovered the resources calendar autocreation bug.
+
+	* Tests/Integration/test-caldav-scheduling.py:
+	New tests to excercise somewhat fragile code in dav autoscheduling.
+
+2012-05-09  Jean Raby  <jraby@inverse.ca>
+
+	* SoObject/SOGo/SOGoParentFolder.m (_createPersonalFolder):
+	Automatically create the folder if its owner is a resource.
+	(not if the active user is a resource)
+
+2012-05-09  Ludovic Marcotte  <lmarcotte@inverse.ca>
+
+	* SoObjects/Mailer/SOGoDraftObject.m - don't encode message/rfc822
+	parts in base64 - it's not allowed.
+
+2012-05-08  Francis Lachapelle  <flachapelle@inverse.ca>
+
+	* UI/WebServerResources/ContactsUI.js (configureDraggables)
+	(configureDroppables, startDragging, whileDragging, stopDragging)
+	(dropAction): drag'n'drop is how handle by jQuery instead of Scriptaculous.
+
+	* UI/WebServerResources/MailerUI.js (configureDraggables)
+	(configureDroppables, startDragging, whileDragging, stopDragging)
+	(dropAction): idem.
+
+	* UI/WebServerResources/generic.js (onCloseButtonClick)
+	(showPromptDialog, showSelectDialog, showAuthenticationDialog)
+	(disposeDialog, _disposeDialog): idem.
+
+	* UI/WebServerResources/SOGoRootPage.js (initLogin): idem.
+
+	* UI/Contacts/UIxContactView.m (-primaryEmail): in the mailto
+	link, remove double-quotes and escape single-quotes from the fullname.
+	(-secondaryEmail): idem.
+
+2012-05-01  Wolfgang Sourdeau  <wsourdeau@inverse.ca>
+
+	* UI/WebServerResources/generic.js (accessToSubscribedFolder): use
+	the last part of the string as folder identifier. Otherwise we end
+	up with the module name.
+
+	* SoObjects/Mailer/SOGoDraftObject.m
+	(-bodyPartForAttachmentWithName:): attach rfc822 content as
+	with base64 encoding, just as any other non-text data.
+
+2012-04-30  Ludovic Marcotte  <lmarcotte@inverse.ca>
+
+	* SoObjects/SOGo/SOGoDomainDefaults.{h,m} - added
+	-hideSystemEMail that honors SOGoHideSystemEMail.
+	Right now, this variable is limited only to
+	the calendar-user-address-set response but can/will be
+	extended later.
+
+	* SoObjects/Appointments/SOGoUserFolder+Appointments.m
+	(-davCalendarUserAddressSet): Modified to honor
+	SOGoHideSystemEMail domain default.
+
+	* SoObjects/Mailer/SOGoDraftObject.m (-lookupName:...):
+	We prioritize the lookup of the "Drafts" folder over the
+	"Sent" one if both are matching.
+
+	* SoObjects/Mailer/SOGoMailFolder.m: Same as above.
+
+
+2012-04-25  Jean Raby  <jraby@inverse.ca>
+
+	* SoObjects/Mailer/SOGoDraftObject.m
+	(-updateFromLDIFRecord:): carry the c_info attribute
+	in vcards through the x-sogo-contactinfo attribute.
+	This functionality was lost a while ago.
+	We used to use the NOTE attribute for this. From now on,
+	the sogo-connector.autoComplete.commentAttribute have to be set to
+	'unprocessed:x-sogo-contactinfo' instead of 'Notes'.
+
+
+2012-04-25  Wolfgang Sourdeau  <wsourdeau@inverse.ca>
+
+	* UI/PreferencesUI/UIxPreferences.m (_extractMainIdentity:): save
+	the custom full name even when the configured custom email has the
+	same value as the system value.
+
+	* SoObjects/SOGo/SOGoUser.m (-appendSystemMailAccount): append
+	custom identity even though only the full name has a custom value.
+
+	* SoObjects/Mailer/SOGoDraftObject.m
+	(-bodyPartForAttachmentWithName:): force conversion of rfc822
+	content to quoted-printable, since it would otherwise risk passing
+	8bit data via the "APPEND" command.
+
+2012-04-24  Wolfgang Sourdeau  <wsourdeau@inverse.ca>
+
+	* UI/WebServerResources/SchedulerUI.js (updateCalendarStatus): if
+	"event" is set, we set its returnValue to true, to avoid a bug
+	occurring since the use of "clickEventWrapper".
+	(resizeCalendarHeaderDIV): new function that resizes the all-day
+	event containers progressively.
+	(_drawCalendarAllDayEvents, _deleteCalendarEventBlocks): invoke
+	the above.
+
+	* UI/WebServerResources/HTMLElement.js: get "HTMLCollection"
+	and "NodeList" classes by class rather than by direct reference.
+
+	* UI/WebServerResources/generic.js (clickEventWrapper): pass the
+	value of "this" to the invoked callback.
+
+2012-04-24  Ludovic Marcotte  <lmarcotte@inverse.ca>
+
+	* SOPE/GDLContentStore/GCSFolder.m (-writeContent:toName:baseVersion:):
+	We now keep track of the saved version for all callers. Also updated
+	all callers to reflect that change.
+
+	* SoObjects/Appointments/SOGoAppointmentObject.m (-PUTAction:)
+	Took some of the logic from SOGoContentObject's -PUTAction: to
+	avoid etag mismatches.
+
+2012-04-23  Ludovic Marcotte  <lmarcotte@inverse.ca>
+
+    * SoObjects/Appointments/SOGoAppointmentObject.m: We now
+	automatically add/remove attendees to recurrence exceptions
+	when they are being added to the master event. Also
+	fixed -PUTAction: so that we fetch the organizer of a recurrence
+	exception when the master doesn't have a copy of it.
+
+	* SoObjects/Appointments/SOGoAppointmentOccurence.m: added
+	-componentTag to avoid server crash.
+
+2012-04-20  Wolfgang Sourdeau  <wsourdeau@inverse.ca>
+
+	* UI/WebServerResources/SchedulerUI.js (onCalendarReload): invoke
+	changerCalendarDisplay when no web calendars are present...
+
+	* UI/WebServerResources/HTMLElement.js: enhanced both
+	HTMLCollection and NodeList with the "Enumerable" interface.
+
+	* UI/WebServerResources/UIxPreferences.js (displayMailAccount):
+	disable the "fullName" and "email" input fields of the first
+	account only when SOGoMailCustomFromEnabled is NO.
+
+	* UI/PreferencesUI/UIxPreferences.m (_extractMainIdentity:): the
+	custom values for "fullName" and "email" are now registered in the
+	user defaults, if "email" is different from all the values
+	returned by the user directory AND if SOGoMailCustomFromEnabled is
+	YES.
+
+	* SoObjects/SOGo/SOGoUserDefaults.m (-setMailCustomFullName:)
+	(-mailCustomFullName): new accessors for the new
+	"SOGoMailCustomFullName" user default.
+	(-setMailCustomEmail:, -mailCustomEmail): new accessors for the
+	new "SOGoMailCustomEmail" user default.
+
+	* SoObjects/SOGo/SOGoDomainDefaults.m (-mailCustomFromEnabled):
+	new getter for the "SOGoMailCustomFromEnabled" domain default.
+
+	* SoObjects/Mailer/SOGoDraftObject.m
+	(-mimeHeaderMapWithHeaders:excluding:) take the new "replyTo"
+	header into account.
+
+	* SoObjects/SOGo/SOGoUser.m (-_appendSystemMailAccount): specify
+	the value of "SOGoMailReplyTo" in the "replyTo" field of each
+	identity, if present.
+	When "SOGoMailCustomFromEnabled" is YES and the user has set
+	a value for "SOGoMailCustomEmail", a first identity is created and
+	set at the first position in the list, based on that value and on
+	"SOGoMailCustomFullName".
+
+	* SoObjects/SOGo/SOGoUserDefaults.m (-setMailReplyTo:)
+	(-mailReplyTo:): accessors for the "SOGoMailReplyTo" user default.
+
+2012-04-19  Ludovic Marcotte  <lmarcotte@inverse.ca>
+
+	* SoObjects/Appointments/SOGoAppointmentObject.m (-PUTAction:)
+	We now handle cases where the last attendee AND the organizer
+	is removed from the event during a PUT action (happens when
+	you delete the last attendee of an event with iCal). This used
+	to crash sogod.
+	* SoObjects/Appointments/SOGoAppointmentFolder.m (-importCalendar:)
+	Fixed the import process of broken all-day events (#1055)
+
+2012-04-19  Francis Lachapelle  <flachapelle@inverse.ca>
+
+	* SoObjects/Appointments/SOGoAppointmentFolder.m
+	(-importCalendar:): associate occurrences of a repeating event to
+	its master vcalendar to avoid duplicated events when importing a .ics.
+
+2012-04-19  Wolfgang Sourdeau  <wsourdeau@inverse.ca>
+
+	* SoObjects/SOGo/SOGoParentFolder.m (-appendSubscribedSources):
+	ensure the array set as values in the settings dicts are not nil
+	prior to setting them.
+
+	* SoObjects/Appointments/SOGoAppointmentFolder.m
+	(-fetchFields:from:to:title:component:additionalFilters:includeProtectedInformation:):
+	fix the date condition for cycle record, by using c_cycleenddate
+	instead of c_enddate.
+
+2012-04-18  Ludovic Marcotte  <lmarcotte@inverse.ca>
+
+	* SoObjects/Appointments/SOGoAppointmentObject.m (-_handleResourcesConflicts: ...):
+	We now handle recurring appointments by fetching the freebusy information for one full
+	year from the date of the event. Also improved the conflict
+	reporting messages.
+
+	* SoObjects/Appointments/SOGoAppointmentObject.m (-PUTAction:):
+	update the versit string in the request when updating the event, in
+	case a resource auto-accepted the event
+
+	* SoObjects/SOGo/SOGoGCSFolder.m: renamed -subscribeUser:reallydo: to
+	subscribeUserOrGroup:reallydo and we now handle group subscriptions.
+	Refactored all callers.
+
+	* SoObjects/SOGo/SOGoParentFolder.m (-_appendSubscribedSource:): now returns a
+	BOOL if the permission are still valid or not
+
+	* SoObjects/SOGo/SOGoParentFolder.m (-appendSubscribedSources): consumes the
+	returned value from -_appendSubscribedSource: and cleans up SubscribedFolders
+	and FolderDisplayNames accordingly in the user's settings.
+
+	* SoObjects/SOGo/SOGoUserManager.m (-_fillContactInfosForUser: ...): we now
+	set the isGroup attribute as we need this for quick groups
+	resolving.
+
+2012-04-18  Wolfgang Sourdeau  <wsourdeau@inverse.ca>
+
+	* UI/WebServerResources/generic.js (showAuthenticationDialog): new
+	dialog providing an interface for requesting a username and a
+	password to acallback passed as parameter.
+	(accessToSubscribedFolder): fixed method to return the proper url
+	for folders owned by the active user.
+
+	* UI/WebServerResources/SchedulerUI.js (reloadWebCalendars): now
+	invokes "reloadAction" on every web calendar foldar, in a chain of
+	simultaneous requests.
+	(reloadWebCalendar): new function invoking "reloadAction" on a
+	single cal folder.
+	(reloadWebCalendarCallback): callback for the above invocation
+	that takes care of refreshing the views at the end of a refresh
+	chain, if present, and when useful.
+
+	* UI/Scheduler/UIxCalFolderActions.m (reloadAction): new web
+	method that applies only to SOGoWebAppointmentFolder instances and
+	which returns a JSON representation of the result returned by
+	-[SOGoWebAppointmentFolder loadWebCalendar]. This method replaces
+	-[UIxCalMainActions -reloadWebCalendars].
+	(setCredentialsAction): new web method acting as a proxy for
+	-[SOGoWebAppointmentFolder setUsername:andPassword:].
+
+	* UI/WebServerResources/generic.js (clickEventWrapper): new
+	function that returns a wrapper function for click callbacks which
+	invokes "preventDefault" on the "event" parameter before it is
+	passed to the real callback.
+
+	* UI/Scheduler/UIxCalMainActions.m
+	(-reloadWebCalendarsAndRedirectAction): removed obsolete method.
+	(-reloadWebCalendars): removed obsolete method.
+
+	* SoObjects/Appointments/SOGoAppointmentFolders.m
+	(-newWebCalendarWithName:atURL:): perform sanity checks on the url
+	parameter.
+
+	* SoObjects/Appointments/SOGoWebAppointmentFolder.m
+	(-setUsername:andPassword:): new method that associate an
+	encrypted login pair for authenticating to remove calendars.
+	(-loadWebCalendar): rewrote method to make use of curl, thereby
+	permitting HTTP authentication. A NSDictionary containing
+	different informations about the connection is not returned,
+	including the HTTP status and an error tag, when required.
+
+	* SoObjects/Appointments/SOGoAppointmentFolder.m
+	(-importCalendar:): journals and freebusys are not
+	supported.
+
+2012-04-16  Jean Raby  <jraby@inverse.ca>
+
+	* SOPE/NGCards/iCalMonthlyRecurrenceCalculator.m
+	(-recurrenceRangesWithinCalendarDateRange:):
+	Fix of by one error. (bug #1772)
+
+2012-04-16  Wolfgang Sourdeau  <wsourdeau@inverse.ca>
+
+	* SoObjects/SOGo/NSString+Utilities.m (-encryptWithKey:)
+	(-decryptWithKey:): new methods providing symmetric encryption of
+	strings.
+
+	* Tests/Unit/SOGoTestRunner.m (-run): do not empty the pool after
+	each test.
+
+2012-04-13  Wolfgang Sourdeau  <wsourdeau@inverse.ca>
+
+	* SoObjects/Appointments/SOGoAppointmentFolder.m (-bareFetchFields: ...),
+	(-fetchFields:from:to:title:component:additionalFilters:includeProtectedInformation:):
+	restored c-style escaping of sql-style escaping of quote characters.
+	(-davCalendarShowAlarms, setDavCalendarShowAlarms:): new proxy dav
+	accessors for "showCalendarAlarms" and "setShowCalendarAlarms:".
+
+2012-04-12  Wolfgang Sourdeau  <wsourdeau@inverse.ca>
+
+	* SoObjects/SOGo/SOGoGCSFolder.m (-componentSQLFilter): new
+	overridable method that enables passing filters for
+	toOneRelationshipKeys from subclasses.
+
+	* SoObjects/Appointments/SOGoAppointmentFolder.m
+	(-davCalendarComponentSet): componentSet is now an ivar. Include
+	VTODO only with showCalendarTasks returns YES.
+	(-davResourceType): return vtodo-collection only when
+	showCalendarTasks returns YES.
+
+	* UI/Scheduler/UIxCalListingActions.m
+	(_fetchFields:forComponentOfType:): do not check for
+	"showCalendarTasks" since it is now handled at the
+	SOGoApopintmentFolder level.
+
+	* SoObjects/Appointments/SOGoAppointmentFolder.m
+	(-bareFetchFields: ...,
+	(-fetchFields:from:to:title:component:additionalFilters:includeProtectedInformation:):
+	make use of a mutable array to define the global WHERE clause, by
+	joining the elements with " AND ".
+	(-additionalWebdavSyncFilters): don't include 'vtodo' components
+	when -[self showCalendarTasks] returns NO.
+
+2012-04-11  Francis Lachapelle  <flachapelle@inverse.ca>
+
+	* UI/WebServerResources/ContactsUI.js (onDocumentKeydown): don't
+	trap keyboard input when inside a textarea.
+
+2012-04-05  Wolfgang Sourdeau  <wsourdeau@inverse.ca>
+
+	* SoObjects/SOGo/NSString+Utilities.m (-objectFromJSONString):
+	added a work-around for JSON strings that were escaped one too
+	many time, in previous versions of sope-gdl1-xxx.
+
+2012-04-04  Jean Raby  <jraby@inverse.ca>
+
+	* Added a new tool: 'sogo-tool expire-sessions'
+		Along with the associated new cronjob, this allows
+		user sessions expiration without a custom script.
+
+	* While there, sort tools in sogo-tool output
+
+2012-04-03  Francis Lachapelle  <flachapelle@inverse.ca>
+
+	* Tools/SOGoToolRemoveDoubles.m (-removeDoublesFromFolder)
+	(-amountOfFilledQuickFields): lowered the case of the
+	telephonenumber table fieldname.
+
+	* OGoContentStore/OCSContactFieldExtractor.m
+	(-extractQuickFieldsFromVCard): idem.
+
+2012-03-29  Francis Lachapelle  <flachapelle@inverse.ca>
+
+	* UI/WebServerResources/UIxPreferences.js (savePreferences): fixed
+	validation of end date of vacation of message when not using ISO
+	format (currently limited to French).
+
+	* UI/WebServerResources/ContactsUI.js (startDragging): create an
+	overlapping safety block (div) to avoid possible selection of the
+	underlying text.
+
+	* UI/WebServerResources/MailerUI.js (startDragging): idem.
+
+2012-03-28  Wolfgang Sourdeau  <wsourdeau@inverse.ca>
+
+	* SoObjects/Contacts/SOGoFolder+CardDAV.m (_isValidFilter:):
+	accept "email" as filter name.
+	(_appendObject:withBaseURL:toREPORTResponse:): fixed the ordering
+	of XML elements as the address*-data props where put outside of
+	the <D:prop> tree.
+
+	* SoObjects/SOGo/LDAPSource.m (-allEntryIDs): take the _filter
+	ivar into account.
+
+2012-03-27  Wolfgang Sourdeau  <wsourdeau@inverse.ca>
+
+	* SoObjects/Contacts/SOGoContactFolders.m
+	(-lookupName:inContext:acquire:): overriden method that enables
+	the lookup of hidden public sources with iOS devices.
+
+	* SoObjects/Contacts/SOGoContactLDIFEntry.m (-davAddressData): new
+	getter similar to davCalendarData.
+
+	* SoObjects/Contacts/SOGoContactSourceFolder.m
+	(-davAddressbookMultiget): new REPORT handler based on
+	-[SOGoAppointmentFolder davCalendarMultiget].
+
+	* SoObjects/Contacts/SOGoUserFolder+Contacts.m
+	(-davDirectoryGateway): new getter that returns the url to the
+	first available directory source.
+	(-davResourceType): declare resource as "directory" (carddav).
+
+2012-03-26  Wolfgang Sourdeau  <wsourdeau@inverse.ca>
+
+	* OpenChange/MAPIStoreTasksMessage.m (-save): take PR_HTML as
+	possible value for the COMMENT field, as as with
+	MAPIStoreCalendarMessages.
+
+	* OpenChange/MAPIApplication.m (-init): removed hack pertaining to
+	UnixSignalHandler since the class no longer exists.
+
 2012-03-23  Francis Lachapelle  <flachapelle@inverse.ca>
 
 	* Tools/SOGoToolUserPreferences.m (-run): we now take the proper
@@ -7,6 +444,12 @@
 
 	* UI/MailerUI/UIxMailFolderActions.m (-emptyTrashAction:): we now
 	unsubscribe from the folders found in the trash.
+
+2012-03-22  Wolfgang Sourdeau  <wsourdeau@inverse.ca>
+
+	* OpenChange/MAPIStoreTasksMessage.m (-save):
+	PidLidPercentComplete is a double, that we need to convert in
+	order to obtain the proper value.
 
 2012-03-21  Wolfgang Sourdeau  <wsourdeau@inverse.ca>
 
@@ -26,6 +469,29 @@
 	* SoObjects/Mailer/SOGoMailObject+Draft.m
 	(_contentForEditingFromKeys:): prefer the HTML part over the text
 	part when composing HTML messages.
+
+2012-03-20  Wolfgang Sourdeau  <wsourdeau@inverse.ca>
+
+	* SoObjects/SOGo/SOGoUserFolder.m (-davLastName, -davFirstName):
+	quick and dirty implementation of those getters.
+
+	* OpenChange/MAPIStoreAppointmentWrapper.m (-_setupITIPContext):
+	ensure method is uppercase.
+
+	* OpenChange/MAPIStoreCalendarMessage.m
+	(-getPidLidAppointmentSequence:inMemCtx:): new getter.
+	(-save): properly initialize CREATED, LAST-MODIFIED, DTSTAMP and
+	SEQUENCE from MAPI properties.
+
+	* OpenChange/MAPIStoreAppointmentWrapper.m
+	(-getPidLidAppointmentSequence:inMemCtx:): new getter.
+
+	* OpenChange/NSDate+MAPIStore.m (-isNever): new accessor for dates
+	occurring in 4500.
+
+	* OpenChange/MAPIStoreTypes.m (MAPIChangeKeyGUIDCompare): NSData
+	arguments passed as "id" due to the pickiness of some versions of
+	gcc.
 
 2012-03-19  Wolfgang Sourdeau  <wsourdeau@inverse.ca>
 
@@ -805,7 +1271,7 @@
 	(bareFetchFields: ...) - we now cache the returned
 	results - just like for fetchFields:...
 
-	* SoObjects/Appointments/SOGoAppointmentFolderObject.m 
+	* SoObjects/Appointments/SOGoAppointmentFolderObject.m
 	(_folderCalenars) - we now ask for the c_content and use
 	a local autorelease pool to avoid consuming too much memory
 
@@ -1245,7 +1711,7 @@
 
 2011-12-09  Wolfgang Sourdeau  <wsourdeau@inverse.ca>
 
-	* UI/SOGoUI/UIxComponent.m (-userHasCalendarAccess) 
+	* UI/SOGoUI/UIxComponent.m (-userHasCalendarAccess)
 	(-userHasMailAccess): moved from UIxPageFrame.
 
 	* UI/Common/UIxToolbar.m (-cssClasses): new accessor that
@@ -3636,7 +4102,7 @@
 
 2011-05-16  Ludovic Marcotte  <lmarcotte@inverse.ca>
 
-	* UI/MailPartViewers/UIxMailPartHTMLViewer.m: Added a 
+	* UI/MailPartViewers/UIxMailPartHTMLViewer.m: Added a
 	workaround for a libxml's issue where the charset
 	specified in meta tags have precedence over the one
 	we "force" when creating the parser. This "bug" has
@@ -4866,7 +5332,7 @@
 	* OpenChange/SOGoMAPIFSMessage.m: -MAPISave added a hack
 	to AVOID saving informations on the fs when dealing
 	with the "inbox" folder - as it'll crash Outlook upon
-	next restarts  
+	next restarts
 	* Added OpenChange/MAPIStoreNotesMessageTable.{h,m} to
 	later extend and improve Notes support.
 
@@ -5759,7 +6225,7 @@
 
 	* UI/WebServerResources/generic.js (triggerAjaxRequest): invoke
 	the request callback only when set on the http object.
-	
+
 	* SoObjects/Mailer/SOGoMailBaseObject.m (-_createIMAP4Connection):
 	we need to initialize newConnection to nil when the return
 	password is nil.
@@ -6769,7 +7235,7 @@
 	In addUserCallback(), we remove the owner of the
 	resource if it was added. This fixes #682.
 	* We now correctly encode/decode the '&'
-	character in the mailbox name when copying and moving 
+	character in the mailbox name when copying and moving
 	messages and also when opening mailboxes. This
 	fixes #716.
 
@@ -7042,7 +7508,7 @@
 	too.
 
 2010-08-03  Ludovic Marcotte  <lmarcotte@inverse.ca>
-	
+
 	* Applied patch for bug #690
 	* Applied patch for bug #703
 	* Applied patch for bug #714
@@ -7773,7 +8239,7 @@
 	(-_privacySqlString): renamed to the new standardized
 	"aclSQLListingFilter". Again, a difference is now made between
 	empty and nil return strings, which we now apply here too.
-	(-bareFetchFields:from:to:title:component:additionalFilters:, 
+	(-bareFetchFields:from:to:title:component:additionalFilters:,
 	(-fetchFields:from:to:title:component:additionalFilters:includeProtectedInformation:):
 	make use of the new semantics to the above method.
 
@@ -7874,7 +8340,7 @@
 	function to toggle the address column header content
 	(From/To). This column changes depending on the mailbox type
 	selected (draft, sent or other).
-	
+
 	* UI/WebServerResources/HTMLElement.js (refreshSelectionByIds):
 	new method to restore the selection based on the elements IDs instead
 	of the elements themselves.
@@ -9520,7 +9986,7 @@
 	* UI/WebServerResources/SchedulerUI.js - we also invoke
 	refreshTasks() in onCalendarReload(). This fixes:
 	http://www.sogo.nu/bugs/view.php?id=250
-	
+
 2009-12-22  Ludovic Marcotte  <lmarcotte@inverse.ca>
 
 	* Removed all the Kolab-related stuff (more specifically,
@@ -10042,7 +10508,7 @@
 2009-10-28  Ludovic Marcotte  <lmarcotte@inverse.ca>
 
         * UI/MailPartViewers/UIxMailPartICalActions.m
-	(_setupChosenEventAndEventObject:) - we now 
+	(_setupChosenEventAndEventObject:) - we now
 	correctly save the event contained in the mail
 	when clicking on Accept/Decline/Delegate into
 	the user's calendar if it's not in there already.
@@ -10051,7 +10517,7 @@
 
 	* UI/Common/UIxPageFrame.m (userEmail): Added to display the user's email
 	address in the linkBanner.
-	* UI/Contacts/UIxListView.m 
+	* UI/Contacts/UIxListView.m
 	(itemHref, itemName, itemEmail): Added to allow clickable email addresses in
 	UIxListView.
 	(itemText): Removed, no longer needed.
@@ -10181,7 +10647,7 @@
 	-davCreateCollection:inContext:
 	We check, prior to creating the resource, if
 	where we create it is a supported target.
-	* SOPE/NGCards/iCalTimeZonePeriod.m 
+	* SOPE/NGCards/iCalTimeZonePeriod.m
 	-_occurenceForDate:byRRule:
 	We correctly compute the number of shifting days
 	during DST changes.
@@ -10200,13 +10666,13 @@
 
 	* SoObjects/Appointments/SOGoAppointmentObject.m
 	(saveComponent:) - in case of an update, we check
-	if no organizer was specified when handling 
+	if no organizer was specified when handling
 	attendees addition to the event.
 
 2009-10-17  Ludovic Marcotte  <lmarcotte@inverse.ca>
 
-	* UI/WebServerResources/UIxListEditor.js (endEditable): 
-	We use "uname" instead of "name" when reading back the 
+	* UI/WebServerResources/UIxListEditor.js (endEditable):
+	We use "uname" instead of "name" when reading back the
 	values from the autocompletion code.
 
 2009-10-16  Francis Lachapelle  <flachapelle@inverse.ca>
@@ -10229,9 +10695,9 @@
 
 	* SoObjects/Appointments/SOGoAppointmentFolders.m
 	(+webdavAclManager): Added to fix issues with iPhones (3.1.2)
-	* SoObjects/Appointments/SOGoAppointmentFolder.m 
+	* SoObjects/Appointments/SOGoAppointmentFolder.m
 	(+webdavAclManager): Changed write-properties and write-content to
-	non-abstract, and set the equivalent for write-content to 
+	non-abstract, and set the equivalent for write-content to
 	SoPerm_AddDocumentsImagesAndFiles
 	* SoObjects/SOGo/SOGoWebDAVAclManager.m (-copyWithZone:): Added to allow
 	object copy (useful for SOGoAppointmentFolders)
@@ -10298,7 +10764,7 @@
 	prefs, not the NSURL instance.
 
 2009-10-13  Ludovic Marcotte  <lmarcotte@inverse.ca>
- 
+
 	* SoObjects/SOGo/NSDictionary+BSJSONAdditions.m
         Fixed the objCType comparison on GNUstep for boolean
         values - we must consider 'c' and 'C'.
@@ -10360,7 +10826,7 @@
 	* Updated patchset to support properly windows-1250
 	charset instead of fallbacking stupidly to iso-8859-1
 	* Updated version number to 1.1.0
-	* Fixed type for the "Administration" module 
+	* Fixed type for the "Administration" module
 
 2009-10-10  Wolfgang Sourdeau  <wsourdeau@inverse.ca>
 
@@ -10577,7 +11043,7 @@
 
 	* SoObjects/Mailer/EOQualifier+MailDAV.m: New category to generate IMAP
 	qualifiers from DAV filters. (REPORT)
-	(buildQualifierFromFilters:): Formatted dates using [NSCalendarDate 
+	(buildQualifierFromFilters:): Formatted dates using [NSCalendarDate
 	rfc822DateString]. Added NOT and extra fields.
 
 2009-10-04  Ludovic Marcotte  <lmarcotte@inverse.ca>

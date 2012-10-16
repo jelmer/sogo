@@ -306,6 +306,10 @@
   return allEmails;
 }
 
+// 
+// We always return the last object among our list of email addresses. This value
+// is always added in SOGoUserManager: -_fillContactMailRecords:
+//
 - (NSString *) systemEmail
 {
   if (!allEmails)
@@ -572,8 +576,8 @@
 
 - (void) _appendSystemMailAccount
 {
-  NSString *fullName, *imapLogin, *imapServer, *signature, *encryption,
-    *scheme, *action, *query;
+  NSString *fullName, *replyTo, *imapLogin, *imapServer, *signature,
+    *encryption, *scheme, *action, *query, *customEmail;
   NSMutableDictionary *mailAccount, *identity, *mailboxes, *receipts;
   NSNumber *port;
   NSMutableArray *identities;
@@ -638,9 +642,45 @@
   mails = [self allEmails];
   [mailAccount setObject: [mails objectAtIndex: 0] forKey: @"name"];
 
+  replyTo = [_defaults mailReplyTo];
+
   max = [mails count];
   if (max > 1)
     max--;
+
+  /* custom from */
+  if ([[self domainDefaults] mailCustomFromEnabled])
+    {
+      [self userDefaults];
+      customEmail = [_defaults mailCustomEmail];
+      fullName = [_defaults mailCustomFullName];
+      if ([customEmail length] > 0 || [fullName length] > 0)
+        {
+          if ([customEmail length] == 0)
+            customEmail = [mails objectAtIndex: 0];
+
+          if ([fullName length] == 0)
+            {
+              fullName = [self cn];
+              if ([fullName length] == 0)
+                fullName = login;
+            }
+
+          identity = [NSMutableDictionary new];
+          [identity setObject: customEmail forKey: @"email"];
+          [identity setObject: fullName forKey: @"fullName"];
+
+          if ([replyTo length] > 0)
+            [identity setObject: replyTo forKey: @"replyTo"];
+
+          signature = [_defaults mailSignature];
+          if (signature)
+            [identity setObject: signature forKey: @"signature"];
+          [identities addObject: identity];
+          [identity release];
+        }
+    }
+
   for (count = 0; count < max; count++)
     {
       identity = [NSMutableDictionary new];
@@ -649,6 +689,10 @@
         fullName = login;
       [identity setObject: fullName forKey: @"fullName"];
       [identity setObject: [mails objectAtIndex: count] forKey: @"email"];
+
+      if ([replyTo length] > 0)
+        [identity setObject: replyTo forKey: @"replyTo"];
+
       signature = [_defaults mailSignature];
       if (signature)
         [identity setObject: signature forKey: @"signature"];
@@ -739,7 +783,7 @@
   NSArray *identities;
 
   identities = [[self mailAccounts] objectsForKey: @"identities"
-				    notFoundMarker: nil];
+                                   notFoundMarker: nil];
 
   return [identities flattenedArray];
 }
