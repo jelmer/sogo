@@ -1,7 +1,111 @@
+2012-06-04  Francis Lachapelle  <flachapelle@inverse.ca>
+
+	* UI/WebServerResources/UIxFilterEditor.js (savePreferences):
+	don't validate filters if they are not visible (when matching all
+	incoming messages).
+
+	* SoObjects/Appointments/SOGoAppointmentFolder.m
+	(-_appendCycleException:firstInstanceCalendarDateRange:fromRow:forRange:withTimeZone:toArray:):
+	adjust recurrence id according to timezone when dealing with a
+	floating all-day event.
+
+2012-06-01  Francis Lachapelle  <flachapelle@inverse.ca>
+
+	* SoObjects/SOGo/NSString+Utilities.m
+	(-_handleURLs:textToMatch:prefix:inRanges:): don't reset the
+	prefix for the subsequent matching strings. This fixes links in
+	messages with multiple email addresses, some of which already
+	prefixed by "mailto;".
+
+2012-06-01  Wolfgang Sourdeau  <wsourdeau@inverse.ca>
+
+	* UI/MailPartViewers/UIxMailPartAlternativeViewer.m
+	(-childPartName): fixed a potential crash by building the NSString
+	from the integer itself, with the proper format string.
+
+	* SoObjects/SOGo/NSString+Crypto.m
+	(-isEqualToCrypted:withDefaultScheme:): invoke "intValue" rather
+	than "integerValue" on the encoding number as the int type is not
+	crucial and it breaks the build with old versions of GNUstep.
+
+	* SoObjects/SOGo/NSString+Crypto.[hm]: new module that provides
+	category methods for returning encrypted passwords strings and
+	their encryption algorithm.
+
+2012-05-31  Ludovic Marcotte  <lmarcotte@inverse.ca>
+
+	* SoObjects/SOGo/SOGoGroup.m - we now handle lowercase
+	all attribute names
+	* SoObject/SOGo/LDAPSource.m - moved the lowercasing
+	of attributes to SOPE.
+	* Added patch from bug #1608. This add many more password
+	schemes for SQL authentication.
+	* SoObject/Mailer/SOGoMailFolder.m (-_readMailboxACL): we
+	now create the mailbox if we are trying to read ACL of
+	a deleted mailbox.
+	* UI/MailerUI/UIxMailEditor.m (-personalContactInfos): we check
+	if the folder still exist and if the database isn't down
+	before performing any address books search operations.
+	* UI/MailerUI/UIxMailMainFrame.m (-unseenCountFolders): we no
+	longer fill up the list of mailboxes to with the ones that are
+	targets for "fileinto" methods if Sieve scripts aren't enabled
+	in SOGo's domain defaults.
+
+2012-05-29  Francis Lachapelle  <flachapelle@inverse.ca>
+
+	* UI/WebServerResources/UIxMailEditor.js (validateEditorInput):
+	merged with onValidate.
+	(onValidate): don't force the subject to be defined, but alert
+	the user.
+
+	* UI/MailerUI/UIxMailView.m (-messageSubject): don't set the
+	subject to "Untitled" if it's not set.
+
+	* UI/MailPartViewers/UIxMailPartMessageViewer.m (-messageSubject): idem.
+
+	* UI/MailerUI/UIxMailEditor.m (-validateForSend): don't force the
+	subject to be defined.
+
+	* SoObjects/Mailer/SOGoMailObject+Draft.m (-subjectForReply): make
+	sure subject is a defined value to avoid "null" strings in the
+	reply message.
+
+2012-05-28  Francis Lachapelle  <flachapelle@inverse.ca>
+
+	* UI/WebServerResources/SchedulerUI.js (validateUploadForm): hide
+	Cancel button when the form is valid and disable the Submit button.
+
+	* UI/WebServerResources/ContactsUI.js (validateUploadForm): idem.
+
+2012-05-24  Jean Raby  <jraby@inverse.ca>
+
+	* debian*/rules: Restart sogod after pkg upgrade (dh_installinit -R)
+	* Scripts/sogo-init.d-*: add support for conditional restart.
+	  Patch from Romain Le Disez
+	* sogo.spec: Restart sogod during post installation if it was already running
+
+	* Apache/SOGo.conf:
+	Use mod_expires to allow long term caching of static content. (1 year)
+	Note that from now on, a resource's URL _must_ change to let the client
+	reload it.  This is now done automatically for 'rsrc' in the wox templates,
+	but must be done manually for files referenced from css and js.
+
+2012-05-23  Wolfgang Sourdeau  <wsourdeau@inverse.ca>
+
+	* UI/WebServerResources/generic.js
+	(clickEventWrapper.button_clickEventWrappe): don't invoke
+	"preventDefault" on elements that do not have a tagName of "A".
+
 2012-05-18  Jean Raby  <jraby@inverse.ca>
 
 	* SoObjects/Mailer/SOGoDraftObject.m (bodyPartForAttachmentWithName):
 	Merge back lost code to handle encoding of binary and rcf822 attachments.
+
+2012-05-15  Wolfgang Sourdeau  <wsourdeau@inverse.ca>
+
+	* OpenChange/gen-property-selectors.py: the use of the "{}" to
+	construct a set is only valid on py2.7 therefore we make use of
+	set([]) instead.
 
 2012-05-15  Jean Raby  <jraby@inverse.ca>
 
@@ -10,8 +114,11 @@
 	to read its freebusy info.
 	Without this, sogo would always auto-accept invitations from 'unprivileged'
 	users, potentially bypassing the multiplebooking parameter.
-	
+
 2012-05-14  Wolfgang Sourdeau  <wsourdeau@inverse.ca>
+
+	* OpenChange/gen-property-selectors.py: "bannedProps" is now a
+	set, for faster lookups.
 
 	* UI/WebServerResources/UIxContactsUserFolders.js: folder ids are
 	in the form "user:module/folder", therefore we must remove the
@@ -72,6 +179,12 @@
 	* UI/Contacts/UIxContactView.m (-primaryEmail): in the mailto
 	link, remove double-quotes and escape single-quotes from the fullname.
 	(-secondaryEmail): idem.
+
+2012-05-04  Wolfgang Sourdeau  <wsourdeau@inverse.ca>
+
+	* OpenChange/MAPIStoreSOGo.m: register and unregister current
+	thread before and after each backend operation, in order to avoid
+	issues in multithreaded environment.
 
 2012-05-01  Wolfgang Sourdeau  <wsourdeau@inverse.ca>
 
@@ -385,6 +498,43 @@
 	* OGoContentStore/OCSContactFieldExtractor.m
 	(-extractQuickFieldsFromVCard): idem.
 
+2012-03-30  Wolfgang Sourdeau  <wsourdeau@inverse.ca>
+
+	* OpenChange/MAPIStoreCalendarMessage.m (-save): remove comment if
+	content is "\n".
+
+	* OpenChange/MAPIStoreTasksMessage.m (-save): do not reset fields
+	that have not been passed in the properties array, since only
+	RopDeleteProperties should remove them.
+	Remove comment if content is "\n".
+
+	* OpenChange/MAPIStoreObject.m (-addPropertiesFromRow:): dates are
+	now all converted to the user's timezone, even though it just
+	inverts the problem we currently have.
+
+	* OpenChange/MAPIApplication.m (-init): utcTZ is now initialized
+	here.
+
+	* OpenChange/MAPIStoreTypes.[hm]: new host module for utcTZ.
+
+	* OpenChange/MAPIStoreUserContext.m (-timeZone): new method that
+	returns the timezone of an owner user.
+
+	* OpenChange/MAPIStoreObject.m (-ownerTimeZone): removed method,
+	replaced with the one above.
+
+2012-03-29  Francis Lachapelle  <flachapelle@inverse.ca>
+
+	* UI/WebServerResources/UIxPreferences.js (savePreferences): fixed
+	validation of end date of vacation of message when not using ISO
+	format (currently limited to French).
+
+	* UI/WebServerResources/ContactsUI.js (startDragging): create an
+	overlapping safety block (div) to avoid possible selection of the
+	underlying text.
+
+	* UI/WebServerResources/MailerUI.js (startDragging): idem.
+
 2012-03-29  Francis Lachapelle  <flachapelle@inverse.ca>
 
 	* UI/WebServerResources/UIxPreferences.js (savePreferences): fixed
@@ -407,6 +557,42 @@
 
 	* SoObjects/SOGo/LDAPSource.m (-allEntryIDs): take the _filter
 	ivar into account.
+
+2012-03-28  Wolfgang Sourdeau  <wsourdeau@inverse.ca>
+
+	* OpenChange/SOGoMAPIFSMessage.m
+	(_readFileChangesDataWithDate:andInode:): use the inode number
+	rather than the filesize as change indicator since a new file is
+	created each time the dictionary is written to disk, thanks to the
+	"atomically" flag.
+	(-save): write the file atomically.
+
+	* SoObjects/Contacts/SOGoFolder+CardDAV.m (_isValidFilter:):
+	accept "email" as filter name.
+	(_appendObject:withBaseURL:toREPORTResponse:): fixed the ordering
+	of XML elements as the address*-data props where put outside of
+	the <D:prop> tree.
+
+	* SoObjects/SOGo/LDAPSource.m (-allEntryIDs): take the _filter
+	ivar into account.
+
+2012-03-27  Wolfgang Sourdeau  <wsourdeau@inverse.ca>
+
+	* SoObjects/Contacts/SOGoContactFolders.m
+	(-lookupName:inContext:acquire:): overriden method that enables
+	the lookup of hidden public sources with iOS devices.
+
+	* SoObjects/Contacts/SOGoContactLDIFEntry.m (-davAddressData): new
+	getter similar to davCalendarData.
+
+	* SoObjects/Contacts/SOGoContactSourceFolder.m
+	(-davAddressbookMultiget): new REPORT handler based on
+	-[SOGoAppointmentFolder davCalendarMultiget].
+
+	* SoObjects/Contacts/SOGoUserFolder+Contacts.m
+	(-davDirectoryGateway): new getter that returns the url to the
+	first available directory source.
+	(-davResourceType): declare resource as "directory" (carddav).
 
 2012-03-27  Wolfgang Sourdeau  <wsourdeau@inverse.ca>
 

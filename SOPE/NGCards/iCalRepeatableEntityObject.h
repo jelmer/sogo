@@ -42,25 +42,25 @@
 - (void)setRecurrenceRules:(NSArray *)_rrule;
 - (BOOL)hasRecurrenceRules;
 - (NSArray *)recurrenceRules;
-- (NSArray *)recurrenceRulesWithTimeZone: (iCalTimeZone *) timezone;
+- (NSArray *)recurrenceRulesWithTimeZone: (id) timezone;
 
 - (void)removeAllExceptionRules;
 - (void)addToExceptionRules:(id)_rrule;
 - (BOOL)hasExceptionRules;
 - (NSArray *)exceptionRules;
-- (NSArray *)exceptionRulesWithTimeZone: (iCalTimeZone *) timezone;
+- (NSArray *)exceptionRulesWithTimeZone: (id) timezone;
 
 - (void)removeAllExceptionDates;
 - (void)addToExceptionDates:(NSCalendarDate *)_date;
 - (BOOL)hasExceptionDates;
 - (NSArray *)exceptionDates;
-- (NSArray *)exceptionDatesWithTimeZone: (iCalTimeZone*) theTimeZone;
+- (NSArray *)exceptionDatesWithTimeZone: (id) theTimeZone;
 
-- (NSArray *) rules: (NSArray *) theRules withTimeZone: (iCalTimeZone *) theTimeZone;
+- (NSArray *) rules: (NSArray *) theRules withTimeZone: (id) theTimeZone;
 
 - (BOOL)isRecurrent;
 - (BOOL)isWithinCalendarDateRange:(NGCalendarDateRange *)_range
-  firstInstanceCalendarDateRange:(NGCalendarDateRange *)_fir;
+   firstInstanceCalendarDateRange:(NGCalendarDateRange *)_fir;
 - (NSArray *)recurrenceRangesWithinCalendarDateRange:(NGCalendarDateRange *)_r
   firstInstanceCalendarDateRange:(NGCalendarDateRange *)_fir;
 

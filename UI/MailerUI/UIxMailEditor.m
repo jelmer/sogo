@@ -394,7 +394,7 @@ static NSArray *infoKeys = nil;
 {
   if (![_info isNotNull]) return;
   [self debugWithFormat:@"loading info ..."];
-  [self takeValuesFromDictionary:_info];
+  [self setValuesForKeysWithDictionary:_info];
 }
 
 - (NSDictionary *) storeInfo
@@ -422,7 +422,13 @@ static NSArray *infoKeys = nil;
 
   folderContainer = (SOGoContactFolders *) [[[self clientObject] lookupUserFolder] privateContacts: @"Contacts"
                                                                                            inContext: nil];
+  
   folder = [folderContainer lookupPersonalFolder: @"personal" ignoringRights: YES];
+
+  // If the folder doesn't exist anymore or if the database is down, we
+  // return an empty array.
+  if ([folder isKindOfClass: [NSException class]])
+      return [NSArray array];
 
   contactInfos = [folder lookupContactsWithFilter: nil
 				       onCriteria: nil
@@ -653,10 +659,7 @@ static NSArray *infoKeys = nil;
 
   if (![self hasOneOrMoreRecipients])
     error = [NSException exceptionWithHTTPStatus: 400 /* Bad Request */
-			 reason: @"Please select a recipient!"];
-  else if ([[self subject] length] == 0)
-    error = [NSException exceptionWithHTTPStatus: 400 /* Bad Request */
-			 reason: @"Please set a subject!"];
+                                          reason: [self labelForKey: @"error_missingrecipients"]];
   else
     error = nil;
   
