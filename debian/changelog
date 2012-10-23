@@ -12,6 +12,7 @@ sogo (2.0.2-1) UNRELEASED; urgency=low
 
  [ Jeroen Dekkers ]
   * Fix cronjob error after package removal. (Closes: #682843)
+  * Detect Mac OS X 10.8 Address Book and iCal correctly (Closes: )
 
  -- Jelmer Vernooij <jelmer@debian.org>  Wed, 14 Nov 2012 13:08:34 +0100
 
