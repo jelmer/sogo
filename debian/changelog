@@ -1,6 +1,6 @@
 sogo (2.0.2-1) UNRELEASED; urgency=low
 
- [ Jelmer Vernooij ]
+  [ Jelmer Vernooij ]
   * Add myself to uploaders.
   * New upstream release.
    + Drop patch 0001-make-check.patch; applied upstream.
@@ -10,7 +10,7 @@ sogo (2.0.2-1) UNRELEASED; urgency=low
    + Refresh 0006-Put-private-libraries-in-usr-lib-sogo.patch.
    + Drop patch 0007-Compile-daemon-as-PIE.patch; applied upstream.
 
- [ Jeroen Dekkers ]
+  [ Jeroen Dekkers ]
   * Fix cronjob error after package removal. (Closes: #682843)
   * Detect Mac OS X 10.8 Address Book and iCal correctly (Closes: )
 
