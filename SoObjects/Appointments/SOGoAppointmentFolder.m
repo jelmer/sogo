@@ -434,6 +434,84 @@ static NSNumber *sharedYes = nil;
                     inCategory: @"FreeBusyExclusions"];
 }
 
+- (BOOL) _notificationValueForKey: (NSString *) theKey
+                 defaultDomainKey: (NSString *) theDomainKey
+{
+  SOGoUser *ownerUser;
+  NSNumber *notify;
+  
+  ownerUser = [SOGoUser userWithLogin: self->owner];
+  notify = [self folderPropertyValueInCategory: theKey
+				       forUser: ownerUser];
+
+  if (!notify && theDomainKey)
+    notify = [NSNumber numberWithBool: [[[context activeUser] domainDefaults]
+					 boolForKey: theDomainKey]];
+
+  return [notify boolValue];
+}
+
+//
+// We MUST keep the 'NO' value here, because we will always
+// fallback to the domain defaults otherwise.
+//
+- (void) _setNotificationValue: (BOOL) b
+                        forKey: (NSString *) theKey
+{
+  [self setFolderPropertyValue: [NSNumber numberWithBool: b]
+		    inCategory: theKey];
+}
+
+- (BOOL) notifyOnPersonalModifications
+{
+  return [self _notificationValueForKey: @"NotifyOnPersonalModifications"
+		       defaultDomainKey: @"SOGoNotifyOnPersonalModifications"];
+}
+
+- (void) setNotifyOnPersonalModifications: (BOOL) b
+{
+  [self _setNotificationValue: b  forKey: @"NotifyOnPersonalModifications"];
+}
+
+- (BOOL) notifyOnExternalModifications
+{
+  return [self _notificationValueForKey: @"NotifyOnExternalModifications"
+		       defaultDomainKey: @"SOGoNotifyOnExternalModifications"];
+}
+
+- (void) setNotifyOnExternalModifications: (BOOL) b
+{
+  [self _setNotificationValue: b  forKey: @"NotifyOnExternalModifications"];
+}
+
+- (BOOL) notifyUserOnPersonalModifications
+{
+  return [self _notificationValueForKey: @"NotifyUserOnPersonalModifications"
+		       defaultDomainKey: nil];
+}
+
+- (void) setNotifyUserOnPersonalModifications: (BOOL) b
+{
+  [self _setNotificationValue: b  forKey: @"NotifyUserOnPersonalModifications"];
+  
+}
+
+- (NSString *) notifiedUserOnPersonalModifications
+{
+  SOGoUser *ownerUser;
+
+  ownerUser = [SOGoUser userWithLogin: self->owner];
+
+  return [self folderPropertyValueInCategory: @"NotifiedUserOnPersonalModifications"
+				     forUser: ownerUser];
+}
+
+- (void) setNotifiedUserOnPersonalModifications: (NSString *) theUser
+{
+  [self setFolderPropertyValue: theUser
+                    inCategory: @"NotifiedUserOnPersonalModifications"];
+}
+
 /* selection */
 
 - (NSArray *) calendarUIDs 
@@ -785,6 +863,11 @@ firstInstanceCalendarDateRange: (NGCalendarDateRange *) fir
 
   newRecord = nil;
   recurrenceId = [component recurrenceId];
+  if (!recurrenceId)
+    {
+      [self errorWithFormat: @"ignored component with an empty EXCEPTION-ID"];
+      return;
+    }
   
   if (tz)
     {
@@ -927,7 +1010,9 @@ firstInstanceCalendarDateRange: (NGCalendarDateRange *) fir
   rules = [cycleinfo objectForKey: @"rules"];
   exRules = [cycleinfo objectForKey: @"exRules"];
   exDates = [cycleinfo objectForKey: @"exDates"];
-  eventTimeZone = allDayTimeZone = tz = nil;
+  eventTimeZone = nil;
+  allDayTimeZone = nil;
+  tz = nil;
 
   row = [self fixupRecord: theRecord];
   [row removeObjectForKey: @"c_cycleinfo"];
@@ -984,7 +1069,9 @@ firstInstanceCalendarDateRange: (NGCalendarDateRange *) fir
                     }
                 }
 
-              tz = eventTimeZone? eventTimeZone : allDayTimeZone;
+#warning this code is ugly: we should not mix objects with different types as\
+  it reduces readability
+              tz = eventTimeZone ? eventTimeZone : allDayTimeZone;
               if (tz)
                 {
                   // Adjust the exception dates
@@ -1394,7 +1481,7 @@ firstInstanceCalendarDateRange: (NGCalendarDateRange *) fir
   [filter setObject: textMatch forKey: propName];
 }
 
-- (NSDictionary *) _parseCalendarFilter: (DOMElement *) filterElement
+- (NSDictionary *) _parseCalendarFilter: (id <DOMElement>) filterElement
 {
   NSMutableDictionary *filterData;
   id <DOMElement> parentNode;
@@ -1449,10 +1536,10 @@ firstInstanceCalendarDateRange: (NGCalendarDateRange *) fir
   return rc;
 }
 
-- (NSArray *) _parseCalendarFilters: (DOMElement *) parentNode
+- (NSArray *) _parseCalendarFilters: (id <DOMElement>) parentNode
 {
   id <DOMNodeList> children;
-  DOMElement *element;
+  id <DOMElement>element;
   NSMutableArray *filters;
   NSDictionary *filter;
   unsigned int count, max;
@@ -1707,7 +1794,7 @@ firstInstanceCalendarDateRange: (NGCalendarDateRange *) fir
 {
   WOResponse *r;
   id <DOMDocument> document;
-  DOMElement *documentElement, *propElement;
+  id <DOMElement> documentElement, propElement;
 
   r = [context response];
   [r prepareDAVResponse];
@@ -1715,9 +1802,9 @@ firstInstanceCalendarDateRange: (NGCalendarDateRange *) fir
                 @" xmlns:C=\"urn:ietf:params:xml:ns:caldav\">"];
 
   document = [[context request] contentAsDOMDocument];
-  documentElement = (DOMElement *) [document documentElement];
-  propElement = [documentElement firstElementWithTag: @"prop"
-                                         inNamespace: XMLNS_WEBDAV];
+  documentElement = (id <DOMElement>) [document documentElement];
+  propElement = [(NGDOMNodeWithChildren *) documentElement
+                    firstElementWithTag: @"prop" inNamespace: XMLNS_WEBDAV];
 
   [self _appendComponentProperties: [self parseDAVRequestedProperties: propElement]
                    matchingFilters: [self _parseCalendarFilters: documentElement]
@@ -2172,33 +2259,101 @@ firstInstanceCalendarDateRange: (NGCalendarDateRange *) fir
 
 - (NSString *) davCalendarShowAlarms
 {
-  NSString *boolean;
-
-  if ([self showCalendarAlarms])
-    boolean = @"true";
-  else
-    boolean = @"false";
-
-  return boolean;
+  return [self davBooleanForResult: [self showCalendarAlarms]];
 }
 
 - (NSException *) setDavCalendarShowAlarms: (id) newBoolean
 {
   NSException *error;
 
-  error = nil;
-
-  if ([newBoolean isEqualToString: @"true"]
-      || [newBoolean isEqualToString: @"1"])
-    [self setShowCalendarAlarms: YES];
-  else if ([newBoolean isEqualToString: @"false"]
-           || [newBoolean isEqualToString: @"0"])
-    [self setShowCalendarAlarms: NO];
+  if ([self isValidDAVBoolean: newBoolean])
+    {
+      [self setShowCalendarAlarms: [self resultForDAVBoolean: newBoolean]];
+      error = nil;
+    }
   else
     error = [NSException exceptionWithHTTPStatus: 400
                                           reason: @"Bad boolean value."];
 
   return error;
+}
+
+- (NSString *) davNotifyOnPersonalModifications
+{
+  return [self davBooleanForResult: [self notifyOnPersonalModifications]];
+}
+
+- (NSException *) setDavNotifyOnPersonalModifications: (NSString *) newBoolean
+{
+  NSException *error;
+
+  if ([self isValidDAVBoolean: newBoolean])
+    {
+      [self setNotifyOnPersonalModifications:
+              [self resultForDAVBoolean: newBoolean]];
+      error = nil;
+    }
+  else
+    error = [NSException exceptionWithHTTPStatus: 400
+                                          reason: @"Bad boolean value."];
+
+  return error;
+}
+
+- (NSString *) davNotifyOnExternalModifications
+{
+  return [self davBooleanForResult: [self notifyOnExternalModifications]];
+}
+
+- (NSException *) setDavNotifyOnExternalModifications: (NSString *) newBoolean
+{
+  NSException *error;
+
+  if ([self isValidDAVBoolean: newBoolean])
+    {
+      [self setNotifyOnExternalModifications:
+              [self resultForDAVBoolean: newBoolean]];
+      error = nil;
+    }
+  else
+    error = [NSException exceptionWithHTTPStatus: 400
+                                          reason: @"Bad boolean value."];
+
+  return error;
+}
+
+- (NSString *) davNotifyUserOnPersonalModifications
+{
+  return [self davBooleanForResult: [self notifyUserOnPersonalModifications]];
+}
+
+- (NSException *) setDavNotifyUserOnPersonalModifications: (NSString *) newBoolean
+{
+  NSException *error;
+
+  if ([self isValidDAVBoolean: newBoolean])
+    {
+      [self setNotifyUserOnPersonalModifications:
+              [self resultForDAVBoolean: newBoolean]];
+      error = nil;
+    }
+  else
+    error = [NSException exceptionWithHTTPStatus: 400
+                                          reason: @"Bad boolean value."];
+
+  return error;
+}
+
+- (NSString *) davNotifiedUserOnPersonalModifications
+{
+  return [self notifiedUserOnPersonalModifications];
+}
+
+- (NSException *) setDavNotifiedUserOnPersonalModifications: (NSString *) theUser
+{
+  [self setNotifiedUserOnPersonalModifications: theUser];
+
+  return nil;
 }
 
 /* vevent UID handling */
@@ -2764,7 +2919,7 @@ firstInstanceCalendarDateRange: (NGCalendarDateRange *) fir
   iCalEvent *event;
 
   int imported, count, i;
-  
+
   imported = 0;
 
   if (calendar)
@@ -2799,6 +2954,41 @@ firstInstanceCalendarDateRange: (NGCalendarDateRange *) fir
               tzId = [startDate value: 0 ofAttribute: @"tzid"];
               if ([tzId length])
                 timezone = [timezones valueForKey: tzId];
+	      else
+		{
+		  // If the start date is a "floating time", let's use the user's timezone
+		  // during the import for both the start and end dates.
+		  NSString *s;
+		  
+		  s = [[startDate valuesAtIndex: 0 forKey: @""] objectAtIndex: 0];
+		  
+		  if ([element isKindOfClass: [iCalEvent class]] &&
+		      ![(iCalEvent *)element isAllDay] &&
+		      ![s hasSuffix: @"Z"] &&
+		      ![s hasSuffix: @"z"])
+		    {
+		      iCalDateTime *endDate;
+		      int delta;
+		      
+		      timezone = [iCalTimeZone timeZoneForName: [[[self->context activeUser] userDefaults] timeZoneName]];
+		      [calendar addTimeZone: timezone];
+	
+		      delta = [[timezone periodForDate: [startDate dateTime]] secondsOffsetFromGMT];
+		      event = (iCalEvent *)element;
+		  
+		      [event setStartDate: [[event startDate] dateByAddingYears: 0  months: 0  days: 0  hours: 0  minutes: 0  seconds: -delta]];
+		      [startDate setTimeZone: timezone];
+
+		      endDate = (iCalDateTime *) [element uniqueChildWithTag: @"dtend"];
+		      
+		      if (endDate)
+			{
+			  [event setEndDate: [[event endDate] dateByAddingYears: 0  months: 0  days: 0  hours: 0  minutes: 0  seconds: -delta]];
+			  [endDate setTimeZone: timezone];
+			}
+		    }
+		}
+	      
               if ([element isKindOfClass: [iCalEvent class]])
                 {
                   event = (iCalEvent *)element;

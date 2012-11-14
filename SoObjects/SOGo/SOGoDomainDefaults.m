@@ -218,6 +218,11 @@
   return [self stringForKey: @"SOGoSMTPServer"];
 }
 
+- (NSString *) smtpAuthenticationType
+{
+  return [self stringForKey: @"SOGoSMTPAuthenticationType"];
+}
+
 - (NSString *) mailSpoolPath
 {
   return [self stringForKey: @"SOGoMailSpoolPath"];
@@ -317,6 +322,21 @@
 - (BOOL) hideSystemEMail
 {
   return [self boolForKey: @"SOGoHideSystemEMail"];
+}
+
+- (int) searchMinimumWordLength
+{
+  return [self integerForKey: @"SOGoSearchMinimumWordLength"];
+}
+
+- (BOOL) notifyOnPersonalModifications
+{
+  return [self boolForKey: @"SOGoNotifyOnPersonalModifications"];
+}
+
+- (BOOL) notifyOnExternalModifications
+{
+  return [self boolForKey: @"SOGoNotifyOnExternalModifications"];
 }
 
 @end

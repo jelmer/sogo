@@ -195,6 +195,7 @@ function openMessageWindowsForSelection(action, firstOnly) {
         var url = window.location.href;
         var parts = url.split("/");
         parts[parts.length-1] = action;
+        window.name += "_" + action;
         window.location.href = parts.join("/");
     }
     else {
@@ -324,18 +325,18 @@ function mailListToggleMessagesFlagged(row) {
     if (selectedRowsId.length > 0) {
         var td = row.down("td.messageFlagColumn");
         var img = td.childElements().first();
-        
+
         var action = "markMessageFlagged";
         var flagged = true;
         if (img.hasClassName("messageIsFlagged")) {
             action = "markMessageUnflagged";
             flagged = false;
         }
-        
+
         for (var i = 0; i < selectedRowsId.length; i++) {
             var msguid = selectedRowsId[i].split("_")[1];
             flagMailInWindow(window, msguid, flagged);
-            
+
             var url = ApplicationBaseURL + encodeURI(Mailer.currentMailbox) + "/"
                 + msguid + "/" + action;
             var data = { "msguid": msguid };
@@ -536,7 +537,7 @@ function deleteSelectedMessagesCallback(http) {
         if (http.status == 200) {
             // The answer contains quota information
             var rdata = http.responseText.evalJSON(true);
-            if (rdata.quotas && data["mailbox"].startsWith('/0/'))      
+            if (rdata.quotas && data["mailbox"].startsWith('/0/'))
                 updateQuotas(rdata.quotas);
         }
 	if (data["refreshUnseenCount"])
@@ -745,7 +746,7 @@ function refreshMailbox() {
         topWindow.refreshCurrentFolder();
         topWindow.refreshUnseenCounts();
     }
-    
+
     return false;
 }
 
@@ -891,14 +892,9 @@ function messageListCallback(row, data, isNew) {
         row.addClassName('thread' + data['ThreadLevel']);
     }
 
-    var cells;
-    if (Prototype.Browser.IE)
-        cells = row.childNodes;
-    else
-        cells = row.cells;
-
+    var cells = row.childElements();
     for (var j = 0; j < cells.length; j++) {
-        var cell = $(cells[j]);
+        var cell = cells[j];
         var cellType = Mailer.columnsOrder[j];
 
         if (data[cellType]) cell.innerHTML = data[cellType];
@@ -1040,7 +1036,7 @@ function onMessageContextMenu(event) {
         onRowClick(event, target);
         selectedNodes = topNode.getSelectedRowsId();
     }
-    
+
     if (selectedNodes.length > 1)
         popupMenu(event, "messagesListMenu", selectedNodes);
     else if (selectedNodes.length == 1)
@@ -1190,7 +1186,7 @@ function onMessageSelectionChange(event) {
 
     // Update rows selection
     onRowClick(event, t);
-    
+
     var messageContent = $("messageContent");
     var rows = this.getSelectedRowsId();
     if (rows.length == 1) {
@@ -1286,30 +1282,36 @@ function configureLoadImagesButton() {
 function configureSignatureFlagImage() {
     var signedPart = $("signedMessage");
     if (signedPart) {
-        var loadImagesButton = $("loadImagesButton");
-        var parentNode = loadImagesButton.parentNode;
-        var valid = parseInt(signedPart.getAttribute("valid"));
-        var flagImage;
+        var supportsSMIME
+            = parseInt(signedPart.getAttribute("supports-smime"));
 
-        if (valid)
-          flagImage = "signature-ok.png";
-        else
-          flagImage = "signature-not-ok.png";
+        if (supportsSMIME) {
+            var loadImagesButton = $("loadImagesButton");
+            var parentNode = loadImagesButton.parentNode;
 
-        var error = signedPart.getAttribute("error");
-        var newImg = createElement("img", "signedImage", null, null,
-                                   { src: ResourcesURL + "/" + flagImage });
+            var valid = parseInt(signedPart.getAttribute("valid"));
+            var flagImage;
 
-        var msgDiv = $("signatureFlagMessage");
-        if (msgDiv && error) {
-            // First line in a h1, others each in a p
-            var formattedMessage = "<h1>" + error.replace(/\n/, "</h1><p>");
-            formattedMessage = formattedMessage.replace(/\n/g, "</p><p>") + "</p>";
-            msgDiv.innerHTML = "<div>" + formattedMessage + "</div>";
-            newImg.observe("mouseover", showSignatureMessage);
-            newImg.observe("mouseout", hideSignatureMessage);
+            if (valid)
+                flagImage = "signature-ok.png";
+            else
+                flagImage = "signature-not-ok.png";
+
+            var error = signedPart.getAttribute("error");
+            var newImg = createElement("img", "signedImage", null, null,
+                                       { src: ResourcesURL + "/" + flagImage });
+
+            var msgDiv = $("signatureFlagMessage");
+            if (msgDiv && error) {
+                // First line in a h1, others each in a p
+                var formattedMessage = "<h1>" + error.replace(/\n/, "</h1><p>");
+                formattedMessage = formattedMessage.replace(/\n/g, "</p><p>") + "</p>";
+                msgDiv.innerHTML = "<div>" + formattedMessage + "</div>";
+                newImg.observe("mouseover", showSignatureMessage);
+                newImg.observe("mouseout", hideSignatureMessage);
+            }
+            loadImagesButton.parentNode.insertBefore(newImg, loadImagesButton.nextSibling);
         }
-        loadImagesButton.parentNode.insertBefore(newImg, loadImagesButton.nextSibling);
     }
 }
 
@@ -1648,7 +1650,7 @@ function loadMessageCallback(http) {
             document.messageAjaxRequest = null;
 	    var msguid = http.callbackData.msguid;
             var mailbox = http.callbackData.mailbox;
-            if (Mailer.currentMailbox == mailbox && 
+            if (Mailer.currentMailbox == mailbox &&
                 Mailer.currentMessages[Mailer.currentMailbox] == msguid) {
                 div.innerHTML = http.responseText;
                 configureLinksInMessage();
@@ -1790,7 +1792,11 @@ function newContactFromEmail(event) {
 }
 
 function onEmailTo(event) {
-    openMailTo(this.innerHTML.strip());
+    var s = this.innerHTML.strip();
+    if (!/@/.test(s)) {
+        s += ' <' + this.href.substr(7) + '>';
+    }
+    openMailTo(s);
     Event.stop(event);
     return false;
 }
@@ -1926,10 +1932,8 @@ function refreshContacts() {
 function openInbox(node) {
     var done = false;
     openMailbox(node.parentNode.getAttribute("dataname"), false);
-    var tree = $("mailboxTree");
-    tree.selectedEntry = node;
-    node.selectElement();
     mailboxTree.o(1);
+    mailboxTree.s(2);
 }
 
 function initMailer(event) {
@@ -1961,6 +1965,9 @@ function initMailer(event) {
         messageListHeader.addInterface(SOGoResizableTableInterface);
         if (UserSettings["Mail"] && UserSettings["Mail"]["ColumnsState"]) {
             messageListHeader.restore($H(UserSettings["Mail"]["ColumnsState"]));
+        }
+        else {
+            messageListHeader.restore();
         }
 
         configureDraggables();
@@ -2020,15 +2027,15 @@ function initMailboxTree() {
     mailboxTree.icon.folder = ResourcesURL + "/tbtv_leaf_corner_17x17.png";
     mailboxTree.icon.folderOpen	= ResourcesURL + "/tbtv_leaf_corner_17x17.png";
     mailboxTree.icon.node = ResourcesURL + "/tbtv_leaf_corner_17x17.png";
-    mailboxTree.icon.line = ResourcesURL + "/tbtv_line_17x17.gif";
-    mailboxTree.icon.join = ResourcesURL + "/tbtv_junction_17x17.gif";
-    mailboxTree.icon.joinBottom	= ResourcesURL + "/tbtv_corner_17x17.gif";
-    mailboxTree.icon.plus = ResourcesURL + "/tbtv_plus_17x17.gif";
-    mailboxTree.icon.plusBottom	= ResourcesURL + "/tbtv_corner_plus_17x17.gif";
-    mailboxTree.icon.minus = ResourcesURL + "/tbtv_minus_17x17.gif";
-    mailboxTree.icon.minusBottom = ResourcesURL + "/tbtv_corner_minus_17x17.gif";
-    mailboxTree.icon.nlPlus = ResourcesURL + "/tbtv_corner_plus_17x17.gif";
-    mailboxTree.icon.nlMinus = ResourcesURL + "/tbtv_corner_minus_17x17.gif";
+    mailboxTree.icon.line = ResourcesURL + "/tbtv_line_17x22.png";
+    mailboxTree.icon.join = ResourcesURL + "/tbtv_junction_17x22.png";
+    mailboxTree.icon.joinBottom = ResourcesURL + "/tbtv_corner_17x22.png";
+    mailboxTree.icon.plus = ResourcesURL + "/tbtv_plus_17x22.png";
+    mailboxTree.icon.plusBottom = ResourcesURL + "/tbtv_corner_plus_17x22.png";
+    mailboxTree.icon.minus = ResourcesURL + "/tbtv_minus_17x22.png";
+    mailboxTree.icon.minusBottom = ResourcesURL + "/tbtv_corner_minus_17x22.png";
+    mailboxTree.icon.nlPlus = ResourcesURL + "/tbtv_corner_plus_17x22.png";
+    mailboxTree.icon.nlMinus = ResourcesURL + "/tbtv_corner_minus_17x22.png";
     mailboxTree.icon.empty = ResourcesURL + "/empty.gif";
     mailboxTree.preload ();
 
@@ -2395,7 +2402,7 @@ function onMenuEmptyTrashCallback(http) {
             var data = http.responseText.evalJSON(true);
             // We currently only show the quota for the first account (0).
             if (data.quotas && http.callbackData.mailbox.startsWith('/0/'))
-                updateQuotas(data.quotas);            
+                updateQuotas(data.quotas);
         }
     }
     else

@@ -25,6 +25,7 @@
 #import <Foundation/NSEnumerator.h>
 #import <Foundation/NSException.h>
 #import <Foundation/NSLock.h>
+#import <Foundation/NSNull.h>
 #import <Foundation/NSString.h>
 #import <Foundation/NSTimer.h>
 #import <Foundation/NSValue.h>
@@ -43,7 +44,14 @@
 #import "SOGoConstants.h"
 #import "SOGoSource.h"
 
+static Class NSNullK;
+
 @implementation SOGoUserManagerRegistry
+
++ (void) initialize
+{
+  NSNullK = [NSNull class];
+}
 
 + (id) sharedRegistry
 {
@@ -691,18 +699,20 @@
   [[SOGoCache sharedCache]
         setUserAttributes: [newUser jsonRepresentation]
                  forLogin: login];
-  
-  key = [newUser objectForKey: @"c_uid"];
-  if (key && ![key isEqualToString: login])
-    [[SOGoCache sharedCache]
-        setUserAttributes: [newUser jsonRepresentation]
-                 forLogin: key];
+  if (![newUser isKindOfClass: NSNullK])
+    {
+      key = [newUser objectForKey: @"c_uid"];
+      if (key && ![key isEqualToString: login])
+        [[SOGoCache sharedCache]
+            setUserAttributes: [newUser jsonRepresentation]
+                     forLogin: key];
 
-  emails = [[newUser objectForKey: @"emails"] objectEnumerator];
-  while ((key = [emails nextObject]))
-    [[SOGoCache sharedCache]
-        setUserAttributes: [newUser jsonRepresentation]
-                 forLogin: key];
+      emails = [[newUser objectForKey: @"emails"] objectEnumerator];
+      while ((key = [emails nextObject]))
+        [[SOGoCache sharedCache]
+            setUserAttributes: [newUser jsonRepresentation]
+                     forLogin: key];
+    }
 }
 
 - (NSMutableDictionary *) _contactInfosForAnonymous
@@ -775,9 +785,12 @@
   NSString *aUID, *cacheUid, *jsonUser;
   BOOL newUser;
 
+  /* TODO: we need to perform a better validity check on "uid" */
+
   if ([uid isEqualToString: @"anonymous"])
     currentUser = [self _contactInfosForAnonymous];
-  else if ([uid length] > 0)
+  else if ([uid length] > 0
+           && [uid rangeOfString: @" "].location == NSNotFound)
     {
       // Remove the "@" prefix used to identified groups in the ACL tables.
       aUID = [uid hasPrefix: @"@"] ? [uid substringFromIndex: 1] : uid;
@@ -787,7 +800,9 @@
         cacheUid = aUID;
       jsonUser = [[SOGoCache sharedCache] userAttributesForLogin: cacheUid];
       currentUser = [jsonUser objectFromJSONString];
-      if (!([currentUser objectForKey: @"emails"]
+      if ([currentUser isKindOfClass: NSNullK])
+        currentUser = nil;
+      else if (!([currentUser objectForKey: @"emails"]
 	    && [currentUser objectForKey: @"cn"]))
 	{
 	  // We make sure that we either have no occurence of a cache entry or
@@ -808,11 +823,15 @@
                                 inDomain: domain];
 	  if (newUser)
 	    {
-	      if ([[currentUser objectForKey: @"c_uid"] length] > 0)
-		[self _retainUser: currentUser
+	      if ([[currentUser objectForKey: @"c_uid"] length] == 0)
+                {
+                  [self _retainUser: (NSDictionary *) [NSNull null]
+                          withLogin: cacheUid];
+                  currentUser = nil;
+                }
+              else
+                [self _retainUser: currentUser
                         withLogin: cacheUid];
-	      else
-		currentUser = nil;
 	    }
 	}
     }

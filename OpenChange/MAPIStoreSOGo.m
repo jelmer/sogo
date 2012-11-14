@@ -1,6 +1,6 @@
 /* MAPIStoreSOGo.m - this file is part of SOGo
  *
- * Copyright (C) 2010, 2011 Inverse inc.
+ * Copyright (C) 2010-2012 Inverse inc.
  *
  * Author: Wolfgang Sourdeau <wsourdeau@inverse.ca>
  *
@@ -36,7 +36,9 @@
 
 #import "MAPIApplication.h"
 #import "MAPIStoreAttachment.h"
+#import "MAPIStoreAttachmentTable.h"
 #import "MAPIStoreContext.h"
+#import "MAPIStoreEmbeddedMessage.h"
 #import "MAPIStoreFolder.h"
 #import "MAPIStoreMessage.h"
 #import "MAPIStoreMailVolatileMessage.h"
@@ -102,8 +104,6 @@ sogo_backend_init (void)
 
   /* We force the plugin to base its configuration on the SOGo tree. */
   ud = [NSUserDefaults standardUserDefaults];
-  [ud registerDefaults: [ud persistentDomainForName: @"sogod"]];
-
   if (!leakDebugging && [ud boolForKey: @"SOGoDebugLeaks"])
     {
       NSLog (@"  leak debugging on");
@@ -271,7 +271,7 @@ sogo_context_get_path(void *backend_object, TALLOC_CTX *mem_ctx,
   if (backend_object)
     {
       wrapper = backend_object;
-      context = wrapper->MAPIStoreSOGoObject;
+      context = wrapper->instance;
       GSRegisterCurrentThread ();
       pool = [NSAutoreleasePool new];
       rc = [context getPath: path ofFMID: fmid inMemCtx: mem_ctx];
@@ -301,7 +301,7 @@ sogo_context_get_root_folder(void *backend_object, TALLOC_CTX *mem_ctx,
   if (backend_object)
     {
       wrapper = backend_object;
-      context = wrapper->MAPIStoreSOGoObject;
+      context = wrapper->instance;
       GSRegisterCurrentThread ();
       pool = [NSAutoreleasePool new];
       rc = [context getRootFolder: &folder withFID: fid];
@@ -340,7 +340,7 @@ sogo_folder_open_folder(void *folder_object, TALLOC_CTX *mem_ctx, uint64_t fid, 
   if (folder_object)
     {
       wrapper = folder_object;
-      folder = wrapper->MAPIStoreSOGoObject;
+      folder = wrapper->instance;
       GSRegisterCurrentThread ();
       pool = [NSAutoreleasePool new];
       rc = [folder openFolder: &childFolder withFID: fid];
@@ -380,7 +380,7 @@ sogo_folder_create_folder(void *folder_object, TALLOC_CTX *mem_ctx,
   if (folder_object)
     {
       wrapper = folder_object;
-      folder = wrapper->MAPIStoreSOGoObject;
+      folder = wrapper->instance;
       GSRegisterCurrentThread ();
       pool = [NSAutoreleasePool new];
       rc = [folder createFolder: &childFolder withRow: aRow andFID: fid];
@@ -419,7 +419,7 @@ sogo_folder_delete(void *folder_object)
   if (folder_object)
     {
       wrapper = folder_object;
-      folder = wrapper->MAPIStoreSOGoObject;
+      folder = wrapper->instance;
       GSRegisterCurrentThread ();
       pool = [NSAutoreleasePool new];
       rc = [folder deleteFolder];
@@ -447,7 +447,7 @@ sogo_folder_get_child_count(void *folder_object, enum mapistore_table_type table
   if (folder_object)
     {
       wrapper = folder_object;
-      folder = wrapper->MAPIStoreSOGoObject;
+      folder = wrapper->instance;
       GSRegisterCurrentThread ();
       pool = [NSAutoreleasePool new];
       rc = [folder getChildCount: child_count ofTableType: table_type];
@@ -479,7 +479,7 @@ sogo_folder_open_message(void *folder_object,
   if (folder_object)
     {
       wrapper = folder_object;
-      folder = wrapper->MAPIStoreSOGoObject;
+      folder = wrapper->instance;
       GSRegisterCurrentThread ();
       pool = [NSAutoreleasePool new];
       rc = [folder openMessage: &message
@@ -517,7 +517,7 @@ sogo_folder_create_message(void *folder_object,
   if (folder_object)
     {
       wrapper = folder_object;
-      folder = wrapper->MAPIStoreSOGoObject;
+      folder = wrapper->instance;
       GSRegisterCurrentThread ();
       pool = [NSAutoreleasePool new];
       rc = [folder createMessage: &message
@@ -549,7 +549,7 @@ sogo_folder_delete_message(void *folder_object, uint64_t mid, uint8_t flags)
   if (folder_object)
     {
       wrapper = folder_object;
-      folder = wrapper->MAPIStoreSOGoObject;
+      folder = wrapper->instance;
       GSRegisterCurrentThread ();
       pool = [NSAutoreleasePool new];
       rc = [folder deleteMessageWithMID: mid andFlags: flags];
@@ -582,10 +582,10 @@ sogo_folder_move_copy_messages(void *folder_object,
   if (folder_object)
     {
       wrapper = folder_object;
-      targetFolder = wrapper->MAPIStoreSOGoObject;
+      targetFolder = wrapper->instance;
 
       wrapper = source_folder_object;
-      sourceFolder = wrapper->MAPIStoreSOGoObject;
+      sourceFolder = wrapper->instance;
 
       GSRegisterCurrentThread ();
       pool = [NSAutoreleasePool new];
@@ -607,9 +607,95 @@ sogo_folder_move_copy_messages(void *folder_object,
 }
 
 static enum mapistore_error
+sogo_folder_move_folder(void *folder_object, void *target_folder_object,
+                        const char *new_folder_name)
+{
+  NSAutoreleasePool *pool;
+  MAPIStoreFolder *moveFolder, *targetFolder;
+  NSString *newFolderName;
+  struct MAPIStoreTallocWrapper *wrapper;
+  int rc;
+
+  DEBUG (5, ("[SOGo: %s:%d]\n", __FUNCTION__, __LINE__));
+
+  if (folder_object)
+    {
+      wrapper = folder_object;
+      moveFolder = wrapper->instance;
+
+      wrapper = target_folder_object;
+      if (wrapper)
+        targetFolder = wrapper->instance;
+      else
+        targetFolder = nil;
+
+      GSRegisterCurrentThread ();
+      pool = [NSAutoreleasePool new];
+
+      if (new_folder_name)
+        newFolderName = [NSString stringWithUTF8String: new_folder_name];
+      else
+        newFolderName = nil;
+
+      rc = [moveFolder moveCopyToFolder: targetFolder
+                            withNewName: newFolderName
+                                 isMove: YES
+                            isRecursive: YES];
+      [pool release];
+      GSUnregisterCurrentThread ();
+    }
+  else
+    {
+      rc = sogo_backend_unexpected_error();
+    }
+
+  return rc;
+}
+
+static enum mapistore_error
+sogo_folder_copy_folder(void *folder_object, void *target_folder_object,
+                        bool recursive, const char *new_folder_name)
+{
+  NSAutoreleasePool *pool;
+  MAPIStoreFolder *copyFolder, *targetFolder;
+  NSString *newFolderName;
+  struct MAPIStoreTallocWrapper *wrapper;
+  int rc;
+
+  DEBUG (5, ("[SOGo: %s:%d]\n", __FUNCTION__, __LINE__));
+
+  if (folder_object)
+    {
+      wrapper = folder_object;
+      copyFolder = wrapper->instance;
+
+      wrapper = target_folder_object;
+      targetFolder = wrapper->instance;
+
+      GSRegisterCurrentThread ();
+      pool = [NSAutoreleasePool new];
+
+      newFolderName = [NSString stringWithUTF8String: new_folder_name];
+
+      rc = [copyFolder moveCopyToFolder: targetFolder
+                            withNewName: newFolderName
+                                 isMove: NO
+                            isRecursive: recursive];
+      [pool release];
+      GSUnregisterCurrentThread ();
+    }
+  else
+    {
+      rc = sogo_backend_unexpected_error();
+    }
+
+  return rc;
+}
+
+static enum mapistore_error
 sogo_folder_get_deleted_fmids(void *folder_object, TALLOC_CTX *mem_ctx,
                               enum mapistore_table_type table_type, uint64_t change_num,
-                              struct I8Array_r **fmidsp, uint64_t *cnp)
+                              struct UI8Array_r **fmidsp, uint64_t *cnp)
 {
   struct MAPIStoreTallocWrapper *wrapper;
   NSAutoreleasePool *pool;
@@ -621,7 +707,7 @@ sogo_folder_get_deleted_fmids(void *folder_object, TALLOC_CTX *mem_ctx,
   if (folder_object)
     {
       wrapper = folder_object;
-      folder = wrapper->MAPIStoreSOGoObject;
+      folder = wrapper->instance;
       GSRegisterCurrentThread ();
       pool = [NSAutoreleasePool new];
       rc = [folder getDeletedFMIDs: fmidsp
@@ -656,7 +742,7 @@ sogo_folder_open_table(void *folder_object, TALLOC_CTX *mem_ctx,
   if (folder_object)
     {
       wrapper = folder_object;
-      folder = wrapper->MAPIStoreSOGoObject;
+      folder = wrapper->instance;
       GSRegisterCurrentThread ();
       pool = [NSAutoreleasePool new];
       rc = [folder getTable: &table
@@ -691,12 +777,41 @@ sogo_folder_modify_permissions(void *folder_object, uint8_t flags,
   if (folder_object)
     {
       wrapper = folder_object;
-      folder = wrapper->MAPIStoreSOGoObject;
+      folder = wrapper->instance;
       GSRegisterCurrentThread ();
       pool = [NSAutoreleasePool new];
       rc = [folder modifyPermissions: permissions
                            withCount: pcount
                             andFlags: flags];
+      [pool release];
+      GSUnregisterCurrentThread ();
+    }
+  else
+    {
+      rc = sogo_backend_unexpected_error();
+    }
+
+  return rc;
+}
+
+static enum mapistore_error
+sogo_folder_preload_message_bodies(void *folder_object, enum mapistore_table_type table_type, const struct UI8Array_r *mids)
+{
+  struct MAPIStoreTallocWrapper *wrapper;
+  NSAutoreleasePool *pool;
+  MAPIStoreFolder *folder;
+  int rc;
+
+  DEBUG (5, ("[SOGo: %s:%d]\n", __FUNCTION__, __LINE__));
+
+  if (folder_object)
+    {
+      wrapper = folder_object;
+      folder = wrapper->instance;
+      GSRegisterCurrentThread ();
+      pool = [NSAutoreleasePool new];
+      rc = [folder preloadMessageBodiesWithMIDs: mids
+                                    ofTableType: table_type];
       [pool release];
       GSUnregisterCurrentThread ();
     }
@@ -723,7 +838,7 @@ sogo_message_get_message_data(void *message_object,
   if (message_object)
     {
       wrapper = message_object;
-      message = wrapper->MAPIStoreSOGoObject;
+      message = wrapper->instance;
       GSRegisterCurrentThread ();
       pool = [NSAutoreleasePool new];
       [message getMessageData: msg_dataP
@@ -754,7 +869,7 @@ sogo_message_create_attachment (void *message_object, TALLOC_CTX *mem_ctx, void 
   if (message_object)
     {
       wrapper = message_object;
-      message = wrapper->MAPIStoreSOGoObject;
+      message = wrapper->instance;
       GSRegisterCurrentThread ();
       pool = [NSAutoreleasePool new];
       rc = [message createAttachment: &attachment inAID: aidp];
@@ -787,7 +902,7 @@ sogo_message_open_attachment (void *message_object, TALLOC_CTX *mem_ctx,
   if (message_object)
     {
       wrapper = message_object;
-      message = wrapper->MAPIStoreSOGoObject;
+      message = wrapper->instance;
       GSRegisterCurrentThread ();
       pool = [NSAutoreleasePool new];
       rc = [message getAttachment: &attachment withAID: aid];
@@ -819,7 +934,7 @@ sogo_message_get_attachment_table (void *message_object, TALLOC_CTX *mem_ctx, vo
   if (message_object)
     {
       wrapper = message_object;
-      message = wrapper->MAPIStoreSOGoObject;
+      message = wrapper->instance;
       GSRegisterCurrentThread ();
       pool = [NSAutoreleasePool new];
       rc = [message getAttachmentTable: &table
@@ -854,7 +969,7 @@ sogo_message_modify_recipients (void *message_object,
   if (message_object)
     {
       wrapper = message_object;
-      message = wrapper->MAPIStoreSOGoObject;
+      message = wrapper->instance;
       GSRegisterCurrentThread ();
       pool = [NSAutoreleasePool new];
       rc = [message modifyRecipientsWithRecipients: recipients
@@ -885,7 +1000,7 @@ sogo_message_set_read_flag (void *message_object, uint8_t flag)
   if (message_object)
     {
       wrapper = message_object;
-      message = wrapper->MAPIStoreSOGoObject;
+      message = wrapper->instance;
       GSRegisterCurrentThread ();
       pool = [NSAutoreleasePool new];
       rc = [message setReadFlag: flag];
@@ -914,7 +1029,7 @@ sogo_message_save (void *message_object)
   if (message_object)
     {
       wrapper = message_object;
-      message = wrapper->MAPIStoreSOGoObject;
+      message = wrapper->instance;
       GSRegisterCurrentThread ();
       pool = [NSAutoreleasePool new];
       rc = [message saveMessage];
@@ -943,7 +1058,7 @@ sogo_message_submit (void *message_object, enum SubmitFlags flags)
   if (message_object)
     {
       wrapper = message_object;
-      message = wrapper->MAPIStoreSOGoObject;
+      message = wrapper->instance;
       GSRegisterCurrentThread ();
       pool = [NSAutoreleasePool new];
       rc = [message submitWithFlags: flags];
@@ -960,16 +1075,16 @@ sogo_message_submit (void *message_object, enum SubmitFlags flags)
 }
 
 static enum mapistore_error
-sogo_message_attachment_open_embedded_message
-(void *attachment_object,
- TALLOC_CTX *mem_ctx, void **message_object,
- uint64_t *midP,
- struct mapistore_message **msg)
+sogo_message_attachment_open_embedded_message (void *attachment_object,
+                                               TALLOC_CTX *mem_ctx,
+                                               void **message_object,
+                                               uint64_t *midP,
+                                               struct mapistore_message **msg)
 {
   struct MAPIStoreTallocWrapper *wrapper;
   NSAutoreleasePool *pool;
   MAPIStoreAttachment *attachment;
-  MAPIStoreAttachmentMessage *message;
+  MAPIStoreEmbeddedMessage *message;
   int rc;
 
   DEBUG (5, ("[SOGo: %s:%d]\n", __FUNCTION__, __LINE__));
@@ -977,13 +1092,49 @@ sogo_message_attachment_open_embedded_message
   if (attachment_object)
     {
       wrapper = attachment_object;
-      attachment = wrapper->MAPIStoreSOGoObject;
+      attachment = wrapper->instance;
       GSRegisterCurrentThread ();
       pool = [NSAutoreleasePool new];
       rc = [attachment openEmbeddedMessage: &message
                                    withMID: midP
                           withMAPIStoreMsg: msg
                                   inMemCtx: mem_ctx];
+      if (rc == MAPISTORE_SUCCESS)
+        *message_object = [message tallocWrapper: mem_ctx];
+      [pool release];
+      GSUnregisterCurrentThread ();
+    }
+  else
+    {
+      rc = sogo_backend_unexpected_error();
+    }
+
+  return rc;
+}
+
+static enum mapistore_error
+sogo_message_attachment_create_embedded_message (void *attachment_object,
+                                                 TALLOC_CTX *mem_ctx,
+                                                 void **message_object,
+                                                 struct mapistore_message **msg)
+{
+  struct MAPIStoreTallocWrapper *wrapper;
+  NSAutoreleasePool *pool;
+  MAPIStoreAttachment *attachment;
+  MAPIStoreEmbeddedMessage *message;
+  int rc;
+
+  DEBUG (5, ("[SOGo: %s:%d]\n", __FUNCTION__, __LINE__));
+
+  if (attachment_object)
+    {
+      wrapper = attachment_object;
+      attachment = wrapper->instance;
+      GSRegisterCurrentThread ();
+      pool = [NSAutoreleasePool new];
+      rc = [attachment createEmbeddedMessage: &message
+                            withMAPIStoreMsg: msg
+                                    inMemCtx: mem_ctx];
       if (rc == MAPISTORE_SUCCESS)
         *message_object = [message tallocWrapper: mem_ctx];
       [pool release];
@@ -1010,7 +1161,7 @@ static enum mapistore_error sogo_table_get_available_properties(void *table_obje
   if (table_object)
     {
       wrapper = table_object;
-      table = wrapper->MAPIStoreSOGoObject;
+      table = wrapper->instance;
       GSRegisterCurrentThread ();
       pool = [NSAutoreleasePool new];
       rc = [table getAvailableProperties: propertiesP inMemCtx: mem_ctx];
@@ -1038,7 +1189,7 @@ sogo_table_set_columns (void *table_object, uint16_t count, enum MAPITAGS *prope
   if (table_object)
     {
       wrapper = table_object;
-      table = wrapper->MAPIStoreSOGoObject;
+      table = wrapper->instance;
       GSRegisterCurrentThread ();
       pool = [NSAutoreleasePool new];
       rc = [table setColumns: properties
@@ -1067,7 +1218,7 @@ sogo_table_set_restrictions (void *table_object, struct mapi_SRestriction *restr
   if (table_object)
     {
       wrapper = table_object;
-      table = wrapper->MAPIStoreSOGoObject;
+      table = wrapper->instance;
       GSRegisterCurrentThread ();
       pool = [NSAutoreleasePool new];
       [table setRestrictions: restrictions];
@@ -1098,7 +1249,7 @@ sogo_table_set_sort_order (void *table_object, struct SSortOrderSet *sort_order,
   if (table_object)
     {
       wrapper = table_object;
-      table = wrapper->MAPIStoreSOGoObject;
+      table = wrapper->instance;
       GSRegisterCurrentThread ();
       pool = [NSAutoreleasePool new];
       [table setSortOrder: sort_order];
@@ -1131,7 +1282,7 @@ sogo_table_get_row (void *table_object, TALLOC_CTX *mem_ctx,
   if (table_object)
     {
       wrapper = table_object;
-      table = wrapper->MAPIStoreSOGoObject;
+      table = wrapper->instance;
       GSRegisterCurrentThread ();
       pool = [NSAutoreleasePool new];
       rc = [table getRow: data withRowID: row_id andQueryType: query_type
@@ -1162,7 +1313,7 @@ sogo_table_get_row_count (void *table_object,
   if (table_object)
     {
       wrapper = table_object;
-      table = wrapper->MAPIStoreSOGoObject;
+      table = wrapper->instance;
       GSRegisterCurrentThread ();
       pool = [NSAutoreleasePool new];
       rc = [table getRowCount: row_countp
@@ -1191,7 +1342,7 @@ sogo_table_handle_destructor (void *table_object, uint32_t handle_id)
   if (table_object)
     {
       wrapper = table_object;
-      table = wrapper->MAPIStoreSOGoObject;
+      table = wrapper->instance;
       GSRegisterCurrentThread ();
       pool = [NSAutoreleasePool new];
       [table destroyHandle: handle_id];
@@ -1221,7 +1372,7 @@ static enum mapistore_error sogo_properties_get_available_properties(void *objec
   if (object)
     {
       wrapper = object;
-      propObject = wrapper->MAPIStoreSOGoObject;
+      propObject = wrapper->instance;
       GSRegisterCurrentThread ();
       pool = [NSAutoreleasePool new];
       rc = [propObject getAvailableProperties: propertiesP inMemCtx: mem_ctx];
@@ -1252,7 +1403,7 @@ sogo_properties_get_properties (void *object,
   if (object)
     {
       wrapper = object;
-      propObject = wrapper->MAPIStoreSOGoObject;
+      propObject = wrapper->instance;
       GSRegisterCurrentThread ();
       pool = [NSAutoreleasePool new];
       rc = [propObject getProperties: data withTags: properties
@@ -1282,7 +1433,7 @@ sogo_properties_set_properties (void *object, struct SRow *aRow)
   if (object)
     {
       wrapper = object;
-      propObject = wrapper->MAPIStoreSOGoObject;
+      propObject = wrapper->instance;
       GSRegisterCurrentThread ();
       pool = [NSAutoreleasePool new];
       rc = [propObject addPropertiesFromRow: aRow];
@@ -1376,14 +1527,18 @@ int mapistore_init_backend(void)
       backend.folder.create_message = sogo_folder_create_message;
       backend.folder.delete_message = sogo_folder_delete_message;
       backend.folder.move_copy_messages = sogo_folder_move_copy_messages;
+      backend.folder.move_folder = sogo_folder_move_folder;
+      backend.folder.copy_folder = sogo_folder_copy_folder;
       backend.folder.get_deleted_fmids = sogo_folder_get_deleted_fmids;
       backend.folder.get_child_count = sogo_folder_get_child_count;
       backend.folder.open_table = sogo_folder_open_table;
       backend.folder.modify_permissions = sogo_folder_modify_permissions;
+      backend.folder.preload_message_bodies = sogo_folder_preload_message_bodies;
       backend.message.create_attachment = sogo_message_create_attachment;
       backend.message.get_attachment_table = sogo_message_get_attachment_table;
       backend.message.open_attachment = sogo_message_open_attachment;
       backend.message.open_embedded_message = sogo_message_attachment_open_embedded_message;
+      backend.message.create_embedded_message = sogo_message_attachment_create_embedded_message;
       backend.message.get_message_data = sogo_message_get_message_data;
       backend.message.modify_recipients = sogo_message_modify_recipients;
       backend.message.set_read_flag = sogo_message_set_read_flag;

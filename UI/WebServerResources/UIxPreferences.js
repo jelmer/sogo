@@ -17,6 +17,17 @@ function savePreferences(sender) {
         serializeContactsCategories();
     }
 
+    if (mailCustomFromEnabled && !emailRE.test($("email").value)) {
+        showAlertDialog(_("Please specify a valid sender address."));
+        sendForm = false;
+    }
+
+    var replyTo = $("replyTo").value;
+    if (!replyTo.blank() && !emailRE.test(replyTo)) {
+        showAlertDialog(_("Please specify a valid reply-to address."));
+        sendForm = false;
+    }
+
     if ($("dayStartTime")) {
         var start = $("dayStartTime");
         var selectedStart = parseInt(start.options[start.selectedIndex].value);
@@ -40,9 +51,9 @@ function savePreferences(sender) {
 	}
         if ($("enableVacationEndDate") && $("enableVacationEndDate").checked) {
             var e = $("vacationEndDate_date");
-            var endDate = e.calendar.prs_date(e.value);
+            var endDate = e.inputAsDate();
             var now = new Date();
-            if (endDate.getTime() < now.getTime()) {
+            if (isNaN(endDate.getTime()) || endDate.getTime() < now.getTime()) {
                 showAlertDialog(_("End date of your auto reply must be in the future."));
                 sendForm = false;
             }
@@ -63,16 +74,12 @@ function savePreferences(sender) {
         $("sieveFilters").setValue(Object.toJSON(jsonFilters));
     }
 
-    saveMailAccounts();
-
-    if (sendForm)
+    if (sendForm) {
+        saveMailAccounts();
         $("mainForm").submit();
+    }
 
     return false;
-}
-
-function onAdjustTime(event) {
-    // unconditionally called from skycalendar.html
 }
 
 function prototypeIfyFilters() {
@@ -229,8 +236,8 @@ function initPreferences() {
 
     button = $("enableVacationEndDate");
     if (button) {
-        assignCalendar('vacationEndDate_date');
-        button.on("change", function(event) {
+        jQuery("#vacationEndDate_date").closest(".date").datepicker({autoclose: true, position: 'above'});
+        button.on("click", function(event) {
             if (this.checked)
                 $("vacationEndDate_date").enable();
             else
@@ -540,11 +547,10 @@ function onMailIdentitySignatureClick(event) {
             var label = _("Please enter your signature below:");
             var fields = createElement("p");
             fields.appendChild(createElement("textarea", "signature"));
-            fields.appendChild(createElement("br"));
             fields.appendChild(createButton("okBtn", _("OK"),
                                             onMailIdentitySignatureOK));
             fields.appendChild(createButton("cancelBtn", _("Cancel"),
-                                            disposeDialog.bind(document.body, dialogId)));
+                                            disposeDialog));
             var dialog = createDialog(dialogId,
                                       _("Signature"),
                                       label,
@@ -579,13 +585,15 @@ function onMailIdentitySignatureClick(event) {
         else
             area.value = "";
 
-
-        dialog.show();
         $("bgDialogDiv").show();
-        if (CKEDITOR.instances["signature"])
+        if (Prototype.Browser.IE)
+            jQuery('#bgDialogDiv').css('opacity', 0.4);
+        jQuery(dialog).fadeIn('fast', function() {
+            if (CKEDITOR.instances["signature"])
                 focusCKEditor();
-        else
-            area.focus();
+            else
+                area.focus();
+        });
         Event.stop(event);
     }
 }

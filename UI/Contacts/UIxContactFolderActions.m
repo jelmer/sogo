@@ -287,5 +287,4 @@
   return rc;
 }
 
-
 @end /* UIxContactsListView */

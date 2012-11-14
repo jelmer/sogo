@@ -167,6 +167,9 @@
 "Signature" = "Signature";
 "Please enter your signature below:" = "Please enter your signature below:";
 
+"Please specify a valid sender address." = "Please specify a valid sender address.";
+"Please specify a valid reply-to address." = "Please specify a valid reply-to address.";
+
 /* Additional Parameters */
 "Additional Parameters" = "Additional Parameters";
 
@@ -239,6 +242,7 @@
 "match any of the following rules:" = "match any of the following rules:";
 "match all messages" = "match all messages";
 "Perform these actions:" = "Perform these actions:";
+"Untitled Filter" = "Untitled Filter";
 
 "Subject" = "Subject";
 "From" = "From";
@@ -279,6 +283,7 @@
 "Label 4" = "Label 4";
 "Label 5" = "Label 5";
 
+"The password was changed successfully." = "The password was changed successfully.";
 "Password must not be empty." = "Password must not be empty.";
 "The passwords do not match. Please try again." = "The passwords do not match. Please try again.";
 "Password change failed" = "Password change failed";

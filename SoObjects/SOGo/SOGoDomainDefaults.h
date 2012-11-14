@@ -53,6 +53,7 @@
 - (BOOL) vacationEnabled;
 - (NSString *) mailingMechanism;
 - (NSString *) smtpServer;
+- (NSString *) smtpAuthenticationType;
 - (NSString *) mailSpoolPath;
 - (float) softQuotaRatio;
 - (BOOL) mailKeepDraftsAfterSend;
@@ -76,6 +77,10 @@
 - (NSArray *) additionalJSFiles;
 
 - (BOOL) hideSystemEMail;
+
+- (int) searchMinimumWordLength;
+- (BOOL) notifyOnPersonalModifications;
+- (BOOL) notifyOnExternalModifications;
 
 @end
 

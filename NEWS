@@ -1,3 +1,129 @@
+2.0.2 (2012-10-24)
+------------------
+
+New features
+ - added support for SMTP AUTH
+ - sogo configuration can now be set in /etc/sogo/sogo.conf
+ - added support for GNU TLS
+
+Enhancements
+ - speed up of the parsing of IMAP traffic
+ - minor speed up of the web interface
+ - speed up the scrolling of the message list in the mail module
+ - speed up the deletion of a large amounts of entries in the contacts module
+ - updated the timezone files to the 2012.g edition
+ - openchange backend: miscellaneous speed up of the synchronization
+   operations
+ - open file descriptors are now closed when the process starts
+
+Bug fixes
+ - the parameters included in the url of remote calendars are now taken into
+   account
+ - fixed an issue occurring with timezone definitions providing multiple entries
+ - openchange backend: miscellaneous crashes during certain Outlook
+   operations, which have appeared in version 2.0.0, have been fixed
+ - fixed issues occuring on OpenBSD and potentially other BSD flavours
+
+2.0.1 (2012-10-10)
+-------------------
+
+Enhancements
+ - deletion of contacts is now performed in batch, which speeds up the
+   operation for large numbers of items
+ - scalability enhancements in the OpenChange backend that enables the first
+   synchronization of mailboxes in a more reasonable time and using less
+   memory
+ - the task list is now sortable 
+
+Bug Fixes
+ - improved support of IE 9
+
+2.0.0 (2012-09-27)
+-------------------
+New Features
+ - Microsoft Outlook compatibility layer
+
+Enhancements
+ - updated translations
+ - calendars list and mini-calendar are now always visible
+ - tasks list has moved to a table in a tabs view along the events list
+ - rows in tree view are now 4 pixels taller
+ - node selection in trees now highlights entire row
+ - new inline date picker
+ - improved IE8/9 support
+ - added support for standard/daylight timezone definition with end date
+ - no longer possible to send a message multilpe times
+ - mail editor title now reflects the current message subject
+ - default language is selected on login page
+ - mail notifications now include the calendar name
+
+Bug Fixes
+ - fixed translation of invitation replies
+ - fixed vacation message encoding
+ - fixed display of events of no duration
+ - fixed error when copying/moving large set of contacts
+ - fixed drag'n'drop of all-day events
+
+1.3.18a (2012-09-04)
+-------------------
+Bug Fixes
+ - fixed display of weekly events with no day mask
+ - fixed parsing of mail headers
+ - fixed support for OS X 10.8 (Mountain Lion)
+
+1.3.18 (2012-08-28)
+-------------------
+Enhancements
+ - updated Catalan, Dutch, German, Hungarian, Russian, Spanish (Argentina), and
+   Spanish (Spain) translations
+ - mail filters (Sieve) are no longer conditional to each other (all filters are
+   executed, no matter if a previous condition matches)
+ - improved tasks list display
+ - RPM packages now treat logrotate file as a config file
+ - completed the transition from text/plain message templates to HTML
+ - new packages for Debian 7.0 (Wheezy)
+
+Bug Fixes
+ - fixed passwords that would be prefixed with '{none}' when not using a
+   password algorithm
+ - fixed handling of duplicated contacts in contact lists
+ - fixed handling of exception dates with timezones in recurrent events
+ - fixed validation of the interval in daily recurrent events with a day mask
+   covering multiple days
+ - fixed name quoting when sending invitations
+
+1.3.17 (2012-07-26)
+-------------------
+New Features
+ - new contextual menu to view the raw content of events, tasks and contacts
+ - send and/or receive email notifications when a calendar is modified (new
+   domain defaults SOGoNotifyOnPersonalModifications and
+   SOGoNotifyOnExternalModifications)
+ - added the SOGoSearchMinimumWordLength domain default which controls the
+   minimal length required before triggering server-side search operations for
+   attendee completion, contact searches, etc. The default value is 2, which
+   means search operations are trigged once the 3rd character is typed.
+
+Enhancements
+ - updated BrazilianPortuguese, Czech, Dutch, French, German, Italian,
+   Spanish (Argentina), Spanish (Spain) translations
+ - all addresses from a contact are displayed in the Web interface (no longer
+   limited to one additional address)
+ - improved Sieve script: vacation message is now sent after evaluating the
+   mail filters
+ - updated CKEditor to version 3.6.4
+
+Bug Fixes
+ - fixed a crash when multiple mail headers of the same type were encountered
+ - fixed logrotate script for Debian
+ - fixed linking of libcurl on Ubuntu 12.04
+ - fixed parsing of timezones when importing .ics files
+ - fixed resource reservation for recurring events
+ - fixed display of text attachments in messages
+ - fixed contextual menu on newly created address books
+ - fixed missing sender in mail notifications to removed attendees
+ - improved invitations handling in iCal
+
 1.3.16 (2012-06-07)
 -------------------
 Enhancements
@@ -8,6 +134,7 @@ Enhancements
  - it's no longer possible to click the "Upload" button multiple times
  - allow delivery of mail with no subject, but alert the user
  - updated Dutch, German, French translations
+
 Bug Fixes
  - fixed compilation under GNU/kFreeBSD
  - fixed compilation for arm architecture

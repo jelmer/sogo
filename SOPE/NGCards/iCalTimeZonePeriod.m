@@ -109,14 +109,19 @@
 			   dateTime];
 }
 
+- (iCalRecurrenceRule *) recurrenceRule
+{
+  return (iCalRecurrenceRule *) [self firstChildWithTag: @"rrule"];
+}
+
 /**
  * This method returns the date corresponding for to the start of the period
  * in the year of the reference date.
  * We assume that a RRULE for a timezone will always be YEARLY with a BYMONTH
  * and a BYDAY rule.
  */
-- (NSCalendarDate *) _occurenceForDate: (NSCalendarDate *) refDate
-			       byRRule: (iCalRecurrenceRule *) rrule
+- (NSCalendarDate *) _occurrenceForDate: (NSCalendarDate *) refDate
+                                byRRule: (iCalRecurrenceRule *) rrule
 {
   NSCalendarDate *tmpDate;
   iCalByDayMask *byDayMask;
@@ -164,17 +169,19 @@
   return tmpDate;
 }
 
-- (NSCalendarDate *) occurenceForDate: (NSCalendarDate *) refDate;
+- (NSCalendarDate *) occurrenceForDate: (NSCalendarDate *) refDate;
 {
   NSCalendarDate *tmpDate;
   iCalRecurrenceRule *rrule;
 
+  tmpDate = nil;
   rrule = (iCalRecurrenceRule *) [self uniqueChildWithTag: @"rrule"];
+
   if ([rrule isVoid])
     tmpDate
       = [(iCalDateTime *) [self uniqueChildWithTag: @"dtstart"] dateTime];
-  else
-    tmpDate = [self _occurenceForDate: refDate byRRule: rrule];
+  else if ([rrule untilDate] == nil || [refDate compare: [rrule untilDate]] == NSOrderedAscending)
+    tmpDate = [self _occurrenceForDate: refDate byRRule: rrule];
 
   return tmpDate;
 }
@@ -182,6 +189,11 @@
 - (int) secondsOffsetFromGMT
 {
   return [self _secondsOfOffset: @"tzoffsetto"];
+}
+
+- (NSComparisonResult) compare: (iCalTimeZonePeriod *) otherPeriod
+{
+  return [[self startDate] compare: [otherPeriod startDate]];
 }
 
 @end

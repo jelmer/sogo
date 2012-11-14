@@ -104,6 +104,13 @@ function insertContact(inputNode, contactName, contactEmail) {
     inputNode.value = value;
 }
 
+function updateWindowTitleFromSubject(event) {
+    if (this.value) {
+        document.title = this.value;
+    }else{
+        document.title = '(' + _("Untitled") + ')';
+    }
+}
 
 /* mail editor */
 
@@ -123,6 +130,10 @@ function onValidate(onSuccess) {
 }
 
 function onValidateDone(onSuccess) {
+    // Create "blocking" div to avoid double-clicking on send button
+    var safetyNet = createElement("div", "javascriptSafetyNet");
+    $('pageContent').insert({top: safetyNet});
+
     var input = currentAttachmentInput();
     if (input)
         input.parentNode.removeChild(input);
@@ -137,7 +148,7 @@ function onValidateDone(onSuccess) {
     window.shouldPreserve = true;
     
     document.pageform.action = "send";
-    
+
     AIM.submit($(document.pageform), {'onComplete' : onPostComplete});
     
     if (typeof onSuccess == 'function')
@@ -159,7 +170,7 @@ function onPostComplete(response) {
                 p = window.opener;
             if (p && p.refreshMessage)
                 p.refreshMessage(jsonResponse["sourceFolder"],
-                                 jsonResponse["messageID"]);            
+                                 jsonResponse["messageID"]);
             onCloseButtonClick();
         }
         else {
@@ -170,6 +181,8 @@ function onPostComplete(response) {
                 progressImage.parentNode.removeChild(progressImage);
             }
             showAlertDialog(jsonResponse["message"]);
+            // Remove "blocking" div
+            onFinalLoadHandler(); // from generic.js
         }
     }
     else {
@@ -410,6 +423,15 @@ function initMailEditor() {
 
     configureDragHandle();
 
+    // Set current subject as window title if not set, use '(Untitled)'
+    if (document.pageform.subject.value == "")
+        document.title = '(' + _("Untitled") + ')';
+    else
+        document.title = _(document.pageform.subject.value);
+
+    // Change the window title when typing the subject
+    $$("div#subjectRow input").first().on("keyup", updateWindowTitleFromSubject);
+
     var composeMode = UserDefaults["SOGoMailComposeMessageType"];
     if (composeMode == "html") {
         CKEDITOR.replace('text',
@@ -609,7 +631,7 @@ function onWindowResize(event) {
 
     // Resize address fields
     var addresslist = $('addressList');
-    addresslist.setStyle({ width: ($(window).width() - attachmentswidth - 10) + 'px' });
+    addresslist.setStyle({ width: (totalwidth - attachmentswidth - 10) + 'px' });
 
     // Set textarea position
     var hr = headerarea.select("hr").first();

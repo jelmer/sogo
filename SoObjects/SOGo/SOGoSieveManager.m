@@ -563,7 +563,6 @@ static NSString *sieveScriptName = @"sogo";
   NSString *sieveText;
   NSArray *scripts;
   int count, max;
-  BOOL previousWasConditional;
   NSDictionary *currentScript;
 
   sieveScript = [NSMutableString stringWithCapacity: 8192];
@@ -576,22 +575,12 @@ static NSString *sieveScriptName = @"sogo";
   max = [scripts count];
   if (max)
     {
-      previousWasConditional = NO;
       for (count = 0; !scriptError && count < max; count++)
         {
           currentScript = [scripts objectAtIndex: count];
           if ([[currentScript objectForKey: @"active"] boolValue])
             {
               sieveText = [self _convertScriptToSieve: currentScript];
-              if ([sieveText hasPrefix: @"if"])
-                {
-                  if (previousWasConditional)
-                    [sieveScript appendFormat: @"els"];
-                  else
-                    previousWasConditional = YES;
-                }
-              else
-                previousWasConditional = NO;
               [sieveScript appendString: sieveText];
             }
         }
@@ -644,13 +633,26 @@ static NSString *sieveScriptName = @"sogo";
 
   script = [NSMutableString string];
 
-  // Right now, we handle Sieve filters here and only for vacation
-  // and forwards. Traditional filters support (for fileinto, for
-  // example) will be added later.
-  values = [ud vacationOptions];
+  // We first handle filters
+  filterScript = [self sieveScriptWithRequirements: req];
+  if (filterScript)
+    {
+      if ([filterScript length])
+        {
+          b = YES;
+          [script appendString: filterScript];
+        }
+    }
+  else
+    {
+      NSLog(@"Sieve generation failure: %@", [self lastScriptError]);
+      return NO;
+    }
 
   // We handle vacation messages.
   // See http://ietfreport.isoc.org/idref/draft-ietf-sieve-vacation/
+  values = [ud vacationOptions];
+
   if (values && [[values objectForKey: @"enabled"] boolValue])
     {
       NSArray *addresses;
@@ -717,21 +719,6 @@ static NSString *sieveScriptName = @"sogo";
 	[script appendString: @"keep;\r\n"];
     }
   
-  filterScript = [self sieveScriptWithRequirements: req];
-  if (filterScript)
-    {
-      if ([filterScript length])
-        {
-          b = YES;
-          [script appendString: filterScript];
-        }
-    }
-  else
-    {
-      NSLog(@"Sieve generation failure: %@", [self lastScriptError]);
-      return NO;
-    }
-
   if ([req count])
     {
       header = [NSString stringWithFormat: @"require [\"%@\"];\r\n",
