@@ -5,6 +5,8 @@ sogo (2.0.2-1) UNRELEASED; urgency=low
    + Drop patch 0001-make-check.patch; applied upstream.
    + Drop patch 0002-link-everything-correctly.patch; applied upstream.
    + Drop patch 0003-Read-configuration-from-etc.patch; applied upstream.
+   + Refresh 0006-Put-private-libraries-in-usr-lib-sogo.patch.
+   + Drop patch 0007-Compile-daemon-as-PIE.patch; applied upstream.
 
  -- Jelmer Vernooij <jelmer@debian.org>  Wed, 14 Nov 2012 13:08:34 +0100
 
