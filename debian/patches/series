@@ -1,4 +1,3 @@
-0003-Read-configuration-from-etc.patch
 0004-Add-support-for-GnuTLS.patch
 0005-Set-SOGoMailSpoolPath-to-var-spool-sogo-by-default.patch
 0006-Put-private-libraries-in-usr-lib-sogo.patch
